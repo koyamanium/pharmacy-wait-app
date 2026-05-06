@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>待ち時間計算アプリ v3</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    :root {
+      --clr-bg: #f4f5f7; --clr-card: #ffffff;
+      --clr-primary: #4a7fa5; --clr-primary-light: #deeaf4;
+      --clr-text: #2c3e50; --clr-sub: #7f8c8d;
+      --clr-border: #e0e4e8; --clr-orange: #c87941; --clr-red: #c94a4a;
+      --radius: 12px; --shadow: 0 2px 10px rgba(0,0,0,0.07);
+      --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+      --dyn-color: #4a7fa5; --dyn-bg: #deeaf4;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      background: var(--clr-bg); color: var(--clr-text);
+      min-height: 100vh;
+      padding-top: max(12px, env(safe-area-inset-top, 12px));
+      padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* ===== MAIN ===== */
+    .main { padding: 0 12px 12px; max-width: 640px; margin: 0 auto; }
+
+    /* ===== WAIT CARD ===== */
+    .wait-card {
+      background: var(--clr-card); border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 16px 18px 14px; margin-bottom: 10px;
+      border-left: 4px solid var(--dyn-color); transition: border-left-color 0.6s ease;
+    }
+    /* V3: inner は align-items:stretch で両列を同じ高さに */
+    .wait-card-inner { display: flex; align-items: stretch; }
+    /* 左列: flex column, space-between でラベル(上)・時間(中)・バッジ+減算(下) */
+    .wait-card-left {
+      flex: 1; display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .wait-card-label { font-size: 12px; color: var(--clr-sub); margin-bottom: 2px; display: flex; align-items: center; gap: 4px; }
+    .wait-time-row { display: flex; align-items: baseline; gap: 4px; user-select: none; -webkit-user-select: none; cursor: pointer; padding: 4px 0; }
+    .wait-time-num {
+      font-size: 72px; font-weight: 800; line-height: 1;
+      color: var(--dyn-color); transition: color 0.6s ease; font-variant-numeric: tabular-nums;
+    }
+    .wait-time-unit { font-size: 22px; font-weight: 600; color: var(--dyn-color); transition: color 0.6s ease; }
+    .wait-secs-wrap { display: flex; align-items: baseline; gap: 2px; margin-left: 6px; }
+    .wait-secs-num { font-size: 32px; font-weight: 700; color: var(--dyn-color); transition: color 0.6s ease; font-variant-numeric: tabular-nums; }
+    .wait-secs-unit { font-size: 14px; font-weight: 500; color: var(--dyn-color); transition: color 0.6s ease; }
+    /* 左列の下部: バッジ＋減算ボタン */
+    .wait-card-bottom-left { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    /* 仕切り線: align-self:stretch で高さ自動 */
+    .wait-card-divider { width: 1px; background: var(--clr-border); margin: 0 14px; flex-shrink: 0; align-self: stretch; }
+    /* 右列: flex column, space-between でラベル(上)・人数(中)・-1ボタン(下) */
+    .wait-card-right {
+      text-align: right; flex-shrink: 0;
+      display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;
+    }
+    .pharm-right-label { font-size: 12px; color: var(--clr-sub); }
+    .pharm-right-count { font-size: 30px; font-weight: 700; color: var(--clr-primary); }
+    .pharm-right-count .unit { font-size: 16px; font-weight: 500; }
+    .wait-status-badge {
+      display: inline-block; padding: 3px 14px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; flex-shrink: 0;
+      background: var(--dyn-bg); color: var(--dyn-color);
+      transition: background 0.6s ease, color 0.6s ease;
+    }
+    .subtract-inline-btn {
+      padding: 8px 18px; border: 1.5px solid var(--clr-border);
+      border-radius: 20px; background: var(--clr-card); font-size: 15px; font-weight: 700;
+      cursor: pointer; color: var(--clr-text); font-family: inherit;
+      -webkit-appearance: none; touch-action: manipulation; transition: all 0.15s;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .subtract-inline-btn:active { transform: scale(0.96); background: var(--clr-bg); }
+    /* V3: display:none → opacity で非表示。常にレイアウト上の高さを維持 */
+    .minus-one-info {
+      opacity: 0; pointer-events: none;
+      padding: 5px 10px; border: 1.5px solid var(--clr-border);
+      border-radius: 10px; background: var(--clr-bg);
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; color: var(--clr-sub); font-family: inherit;
+      touch-action: manipulation; transition: opacity 0.2s, background 0.15s, border-color 0.15s;
+      white-space: nowrap; text-align: right; align-self: flex-end;
+      -webkit-appearance: none; line-height: 1.4;
+    }
+    .minus-one-info.visible { opacity: 1; pointer-events: auto; }
+    .minus-one-info:active { background: var(--clr-primary-light); border-color: var(--clr-primary); }
+
+    /* ===== MAIN GRID ===== */
+    .main-grid { display: grid; grid-template-columns: 130px 1fr; gap: 10px; margin-bottom: 10px; }
+
+    /* ===== PANEL CARD ===== */
+    .panel-card { background: var(--clr-card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 10px; }
+    .panel-title { font-size: 12px; font-weight: 600; color: var(--clr-sub); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+    .help-icon {
+      display: inline-flex; width: 15px; height: 15px; border-radius: 50%;
+      border: 1.5px solid var(--clr-sub); font-size: 9px; align-items: center;
+      justify-content: center; cursor: pointer; color: var(--clr-sub); flex-shrink: 0;
+      font-weight: 700; line-height: 1; touch-action: manipulation;
+    }
+
+    /* ===== MODE ROW ===== */
+    .mode-row-top { display: flex; gap: 4px; margin-bottom: 6px; }
+    .mode-btn {
+      flex: 1; padding: 6px 0; border: 1.5px solid var(--clr-border); border-radius: 8px;
+      background: var(--clr-card); font-size: 11px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s ease; text-align: center; color: var(--clr-sub);
+      font-family: inherit; -webkit-appearance: none; touch-action: manipulation;
+    }
+    .mode-btn.active { background: var(--clr-primary); color: white; border-color: var(--clr-primary); }
+    .mode-btn:active { transform: scale(0.96); }
+
+    /* ===== PHARMACIST BUTTONS ===== */
+    .pharm-btn-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 4px; }
+    .pharm-btn {
+      width: 100%; padding: 9px 0; border: 1.5px solid var(--clr-border);
+      border-radius: 9px; background: var(--clr-card); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s ease; text-align: center; color: var(--clr-text);
+      position: relative; font-family: inherit; -webkit-appearance: none; touch-action: manipulation;
+    }
+    .pharm-btn:active { transform: scale(0.96); }
+    .pharm-btn.is-effective { background: var(--clr-primary); color: white; border-color: var(--clr-primary); }
+    .pharm-btn.is-effective::after {
+      content: '◀'; position: absolute; right: -10px; top: 50%;
+      transform: translateY(-50%); font-size: 10px; color: var(--clr-primary);
+    }
+    .pharm-btn.is-base:not(.is-effective) { border-color: var(--clr-primary); color: var(--clr-primary); background: var(--clr-primary-light); }
+    .pharm-status-info { font-size: 10px; color: var(--clr-sub); text-align: center; line-height: 1.7; margin-top: 4px; }
+
+    /* ===== PRESCRIPTION GRID ===== */
+    .presc-header-row { display: grid; gap: 5px; margin-bottom: 5px; }
+    .presc-col-head { text-align: center; font-size: 11px; color: var(--clr-sub); line-height: 1.3; }
+    .presc-col-sub { font-size: 9px; color: #aaa; display: block; }
+    .presc-grid { display: grid; gap: 5px; }
+
+    .presc-container { }
+    .large-head-text { display: none; }
+    .presc-container.collapsed .presc-header-row { grid-template-columns: 1fr 1fr auto; }
+    .presc-container.collapsed .presc-grid      { grid-template-columns: 1fr 1fr; }
+    .presc-container.collapsed .presc-btn[data-type="large"] { display: none; }
+    .presc-container:not(.collapsed) .presc-header-row { grid-template-columns: repeat(3, 1fr); }
+    .presc-container:not(.collapsed) .presc-grid      { grid-template-columns: repeat(3, 1fr); }
+
+    .large-toggle-btn {
+      padding: 3px 7px; border: 1.5px solid var(--clr-border); border-radius: 8px;
+      background: var(--clr-bg); font-size: 10px; font-weight: 700; cursor: pointer;
+      color: var(--clr-primary); font-family: inherit; white-space: nowrap;
+      touch-action: manipulation; transition: all 0.15s; -webkit-appearance: none;
+      align-self: center;
+    }
+    .large-toggle-btn:active { background: var(--clr-primary-light); }
+
+    .presc-btn {
+      padding: 12px 4px; border: 1.5px solid var(--clr-border); border-radius: 10px;
+      background: var(--clr-card); font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1), background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      text-align: center; color: var(--clr-text); box-shadow: var(--shadow-sm);
+      user-select: none; -webkit-user-select: none; font-family: inherit;
+      -webkit-appearance: none; touch-action: manipulation;
+    }
+    .presc-btn .unit { font-size: 10px; font-weight: 400; }
+    .presc-btn.active-row { background: var(--clr-primary); color: white; border-color: var(--clr-primary); box-shadow: 0 3px 10px rgba(74,127,165,0.3); }
+    .presc-btn:active { transform: scale(0.96) !important; box-shadow: none !important; }
+
+    /* ===== BOTTOM PANELS ===== */
+    .bottom-panels { display: grid; grid-template-columns: 1fr 1fr 0.85fr; gap: 8px; margin-bottom: 10px; }
+    .sub-panel { background: var(--clr-card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 8px; }
+    .sub-panel-title {
+      font-size: 12px; font-weight: 600; color: var(--clr-sub); text-align: center;
+      margin-bottom: 7px; display: flex; align-items: center; justify-content: center; gap: 3px;
+    }
+    .sub-panel-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .sub-btn {
+      padding: 8px 2px; border: 1.5px solid var(--clr-border); border-radius: 8px;
+      background: var(--clr-card); font-size: 9.5px; cursor: pointer; transition: all 0.15s;
+      text-align: center; line-height: 1.4; color: var(--clr-text); font-family: inherit;
+      -webkit-appearance: none; touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
+    }
+    .sub-btn:active { transform: scale(0.96); }
+    .sub-btn-time { display: block; font-size: 14px; font-weight: 700; color: var(--clr-primary); }
+    .ippo-btns { display: flex; flex-direction: column; gap: 4px; }
+    .ippo-btn {
+      width: 100%; padding: 10px 2px; border: 1.5px solid var(--clr-border); border-radius: 8px;
+      background: var(--clr-card); font-size: 9px; cursor: pointer; transition: all 0.15s;
+      text-align: center; line-height: 1.4; color: var(--clr-text); font-family: inherit;
+      -webkit-appearance: none; touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
+    }
+    .ippo-btn:active { transform: scale(0.96); }
+    .ippo-btn-time { display: block; font-size: 11px; font-weight: 700; color: var(--clr-primary); }
+
+    /* ===== FREE ADD ===== */
+    .free-add-card { background: var(--clr-card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px; margin-bottom: 10px; }
+    .free-add-title { font-size: 12px; color: var(--clr-sub); margin-bottom: 9px; display: flex; align-items: center; gap: 4px; font-weight: 600; }
+    .free-add-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .free-btn {
+      padding: 8px 18px; border: 1.5px solid var(--clr-border); border-radius: 20px;
+      background: var(--clr-card); font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; color: var(--clr-text); font-family: inherit;
+      -webkit-appearance: none; touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
+    }
+    .free-btn:active { transform: scale(0.96); background: var(--clr-primary-light); border-color: var(--clr-primary); }
+    .free-btn-add {
+      padding: 8px 18px; border: 1.5px dashed var(--clr-primary); border-radius: 20px;
+      background: transparent; font-size: 15px; font-weight: 700; cursor: pointer;
+      color: var(--clr-primary); transition: all 0.15s; font-family: inherit;
+      -webkit-appearance: none; touch-action: manipulation;
+    }
+    .free-btn-add:active { transform: scale(0.96); background: var(--clr-primary-light); }
+
+    /* ===== BOTTOM NAV ===== */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; height: 58px;
+      background: var(--clr-card); border-top: 1px solid var(--clr-border);
+      display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; background: none; border: none; cursor: pointer; font-size: 10px;
+      color: var(--clr-sub); transition: color 0.15s; font-family: inherit; touch-action: manipulation;
+    }
+    .nav-item:active { color: var(--clr-primary); }
+    .nav-icon { font-size: 18px; line-height: 1; }
+
+    /* ===== OVERLAYS / MODALS ===== */
+    .overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--clr-card); border-radius: 16px; padding: 24px 20px 20px;
+      width: 100%; max-width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      animation: modal-in 0.2s ease; max-height: 90vh; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    @keyframes modal-in {
+      from { transform: scale(0.92); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--clr-text); }
+    .modal-sublabel { font-size: 12px; color: var(--clr-sub); margin-bottom: 6px; font-weight: 500; }
+    .modal-input {
+      width: 100%; padding: 14px; border: 1.5px solid var(--clr-border); border-radius: 10px;
+      font-size: 24px; font-weight: 700; text-align: center; outline: none; color: var(--clr-text);
+      margin-bottom: 10px; font-family: inherit; transition: border-color 0.15s; -webkit-appearance: none;
+    }
+    .modal-input:focus { border-color: var(--clr-primary); }
+    .modal-input.text-mode { font-size: 15px; font-weight: 500; text-align: left; padding: 12px 14px; }
+    .modal-hint { font-size: 11px; color: #aaa; text-align: center; margin-top: -6px; margin-bottom: 10px; }
+    .modal-btns { display: flex; gap: 8px; }
+    .modal-cancel {
+      flex: 1; padding: 12px; border: none; border-radius: 10px; background: var(--clr-bg);
+      color: var(--clr-sub); font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: transform 0.1s; touch-action: manipulation;
+    }
+    .modal-cancel:active { transform: scale(0.97); }
+    .modal-confirm {
+      flex: 1; padding: 12px; border: none; border-radius: 10px; background: var(--clr-primary);
+      color: white; font-size: 14px; font-weight: 700; cursor: pointer;
+      font-family: inherit; transition: transform 0.1s; touch-action: manipulation;
+    }
+    .modal-confirm:active { transform: scale(0.97); }
+    .modal-reset-msg { font-size: 14px; color: var(--clr-sub); line-height: 1.7; margin-bottom: 20px; }
+
+    .minus-one-quick-row { display: flex; gap: 6px; margin-bottom: 14px; }
+    .minus-one-quick-btn {
+      flex: 1; padding: 10px; border: 1.5px solid var(--clr-border); border-radius: 10px;
+      background: var(--clr-bg); font-size: 14px; font-weight: 700; cursor: pointer;
+      color: var(--clr-text); font-family: inherit; transition: all 0.15s; touch-action: manipulation;
+      text-align: center;
+    }
+    .minus-one-quick-btn:active { background: var(--clr-primary-light); border-color: var(--clr-primary); }
+    .minus-one-quick-btn.minus-btn { color: var(--clr-orange); border-color: var(--clr-orange); }
+    .minus-one-quick-btn.minus-btn:active { background: #fde8d0; }
+    .minus-one-quick-btn.zero-btn { color: var(--clr-red); border-color: #e57373; }
+    .minus-one-quick-btn.zero-btn:active { background: #fdecea; }
+
+    .ippo-preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px; }
+    .ippo-preset-btn {
+      padding: 10px 4px; border: 1.5px solid var(--clr-border); border-radius: 10px;
+      background: var(--clr-bg); font-size: 15px; font-weight: 700; cursor: pointer;
+      color: var(--clr-primary); font-family: inherit; text-align: center;
+      transition: all 0.15s; touch-action: manipulation; -webkit-appearance: none;
+    }
+    .ippo-preset-btn:active { background: var(--clr-primary); color: white; border-color: var(--clr-primary); }
+    .ippo-preset-btn .unit { font-size: 11px; font-weight: 400; }
+
+    .settings-section { margin-bottom: 14px; }
+    .settings-label { font-size: 12px; color: var(--clr-sub); margin-bottom: 6px; font-weight: 500; }
+    .settings-row { display: flex; align-items: center; gap: 8px; }
+    .settings-input {
+      flex: 1; padding: 10px 12px; border: 1.5px solid var(--clr-border); border-radius: 10px;
+      font-size: 18px; font-weight: 700; text-align: center; outline: none;
+      color: var(--clr-text); font-family: inherit; transition: border-color 0.15s; -webkit-appearance: none;
+    }
+    .settings-input:focus { border-color: var(--clr-primary); }
+    .settings-unit { font-size: 13px; color: var(--clr-sub); white-space: nowrap; }
+    .settings-divider { height: 1px; background: var(--clr-border); margin: 14px 0; }
+    .danger-btn {
+      width: 100%; padding: 12px; border: 1.5px solid #e57373; border-radius: 10px;
+      background: transparent; color: var(--clr-red); font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: background 0.15s; touch-action: manipulation;
+    }
+    .danger-btn:active { background: #fdecea; }
+    .sound-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+    .sound-toggle-label { font-size: 14px; color: var(--clr-text); font-weight: 500; }
+    .toggle-switch {
+      position: relative; width: 48px; height: 28px; cursor: pointer;
+      -webkit-appearance: none; appearance: none; background: #ccc;
+      border-radius: 14px; transition: background 0.2s; outline: none; flex-shrink: 0;
+    }
+    .toggle-switch:checked { background: var(--clr-primary); }
+    .toggle-switch::before {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 22px; height: 22px; border-radius: 50%; background: white;
+      transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .toggle-switch:checked::before { transform: translateX(20px); }
+
+    .pharm-count-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .pharm-count-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 50%; background: var(--clr-primary);
+      color: white; font-weight: 700; font-size: 15px; flex-shrink: 0;
+    }
+    .pharm-count-label { font-size: 13px; color: var(--clr-text); flex: 1; }
+    .pharm-count-del {
+      padding: 4px 10px; border: 1px solid #e57373; border-radius: 8px;
+      background: transparent; color: var(--clr-red); font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit; touch-action: manipulation;
+    }
+    .pharm-count-del:active { background: #fdecea; }
+    .pharm-count-add {
+      width: 100%; padding: 10px; border: 1.5px dashed var(--clr-primary); border-radius: 10px;
+      background: transparent; color: var(--clr-primary); font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; touch-action: manipulation; transition: background 0.15s;
+    }
+    .pharm-count-add:active { background: var(--clr-primary-light); }
+
+    .sub-edit-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+    .sub-edit-row label { font-size: 12px; color: var(--clr-sub); width: 90px; flex-shrink: 0; }
+    .sub-edit-row input {
+      flex: 1; padding: 8px 10px; border: 1.5px solid var(--clr-border); border-radius: 8px;
+      font-size: 16px; font-weight: 700; text-align: center; outline: none;
+      color: var(--clr-text); font-family: inherit; -webkit-appearance: none;
+    }
+    .sub-edit-row input:focus { border-color: var(--clr-primary); }
+
+    .modal-list { max-height: 300px; overflow-y: auto; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
+    .memo-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--clr-border); }
+    .memo-item:last-child { border-bottom: none; }
+    .memo-text { flex: 1; font-size: 14px; color: var(--clr-text); line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+    .memo-time { font-size: 10px; color: var(--clr-sub); flex-shrink: 0; }
+    .memo-del { background: none; border: none; font-size: 16px; color: #ccc; cursor: pointer; padding: 0 2px; flex-shrink: 0; touch-action: manipulation; line-height: 1; }
+    .memo-del:active { color: var(--clr-red); }
+    .memo-empty { text-align: center; color: var(--clr-sub); padding: 24px 0; font-size: 13px; }
+    .memo-add-area { display: flex; gap: 8px; align-items: flex-end; }
+    .memo-textarea {
+      flex: 1; padding: 10px 12px; border: 1.5px solid var(--clr-border); border-radius: 10px;
+      font-size: 14px; outline: none; color: var(--clr-text); font-family: inherit;
+      resize: none; min-height: 52px; transition: border-color 0.15s; -webkit-appearance: none;
+    }
+    .memo-textarea:focus { border-color: var(--clr-primary); }
+    .memo-add-btn {
+      padding: 10px 14px; border: none; border-radius: 10px; background: var(--clr-primary);
+      color: white; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+      touch-action: manipulation; white-space: nowrap; align-self: flex-end;
+    }
+    .memo-add-btn:active { opacity: 0.85; }
+
+    .tooltip-overlay { display: none; position: fixed; inset: 0; z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+    .tooltip-overlay.open { display: flex; }
+    .tooltip-box {
+      background: rgba(44,62,80,0.92); color: white; padding: 14px 20px; border-radius: 12px;
+      font-size: 13px; text-align: center; max-width: 300px; line-height: 1.7;
+      animation: modal-in 0.15s ease; pointer-events: none;
+    }
+
+    @keyframes btn-bounce {
+      0%   { transform: scale(0.96); }
+      60%  { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+    .btn-bounce { animation: btn-bounce 0.3s cubic-bezier(0.34,1.56,0.64,1) !important; }
+
+    /* ===== iPhoneのみ（タッチ端末 かつ 767px以下）===== */
+    @media (hover: none) and (pointer: coarse) and (max-width: 767px) {
+      .presc-container.collapsed .presc-btn { padding: 16px 4px; font-size: 18px; }
+      .sub-btn { padding: 11px 2px; font-size: 10.5px; }
+      .sub-btn-time { font-size: 15px; }
+      .ippo-btn { padding: 12px 2px; }
+    }
+
+    /* ===== iPad・MacBook（768px以上 または マウス端末）では常に3列表示 ===== */
+    @media (min-width: 768px), (hover: hover) and (pointer: fine) {
+      .presc-container.collapsed .presc-header-row { grid-template-columns: repeat(3, 1fr); }
+      .presc-container.collapsed .presc-grid       { grid-template-columns: repeat(3, 1fr); }
+      .presc-container.collapsed .presc-btn[data-type="large"] { display: unset; }
+      .large-toggle-btn { display: none; }
+      .large-head-text  { display: block; }
+    }
+
+    /* ===== iPad / PC: 全体的にサイズアップ ===== */
+    @media (min-width: 768px) {
+      .main { padding: 0 24px 16px; max-width: 820px; }
+
+      /* Wait card */
+      .wait-card { padding: 20px 24px 18px; margin-bottom: 14px; }
+      .wait-card-label { font-size: 14px; }
+      .wait-time-num { font-size: 96px; }
+      .wait-time-unit { font-size: 30px; }
+      .wait-secs-num { font-size: 44px; }
+      .wait-secs-unit { font-size: 18px; }
+      .wait-card-divider { margin: 0 20px; }
+      .pharm-right-label { font-size: 14px; }
+      .pharm-right-count { font-size: 40px; }
+      .pharm-right-count .unit { font-size: 20px; }
+      .minus-one-info { font-size: 14px; padding: 7px 14px; border-radius: 12px; }
+      .wait-status-badge { font-size: 14px; padding: 5px 18px; }
+      .subtract-inline-btn { font-size: 18px; padding: 10px 24px; }
+
+      /* Main grid */
+      .main-grid { grid-template-columns: 170px 1fr; gap: 12px; margin-bottom: 12px; }
+
+      /* Panel card */
+      .panel-card { padding: 16px 14px; }
+      .panel-title { font-size: 14px; margin-bottom: 10px; }
+      .help-icon { width: 18px; height: 18px; font-size: 11px; }
+
+      /* Mode buttons */
+      .mode-row-top { gap: 6px; margin-bottom: 8px; }
+      .mode-btn { font-size: 13px; padding: 9px 0; }
+
+      /* Pharmacist buttons */
+      .pharm-btn-group { gap: 7px; }
+      .pharm-btn { font-size: 17px; padding: 13px 0; }
+      .pharm-status-info { font-size: 12px; margin-top: 6px; }
+
+      /* Prescription grid */
+      .presc-btn { padding: 18px 4px; font-size: 19px; }
+      .presc-btn .unit { font-size: 12px; }
+      .presc-col-head { font-size: 13px; }
+      .presc-col-sub { font-size: 10px; }
+
+      /* Bottom panels */
+      .bottom-panels { gap: 10px; margin-bottom: 14px; }
+      .sub-panel { padding: 14px 10px; }
+      .sub-panel-title { font-size: 14px; margin-bottom: 10px; }
+      .sub-btn { padding: 12px 4px; font-size: 12px; }
+      .sub-btn-time { font-size: 17px; }
+      .ippo-btn { padding: 14px 4px; font-size: 11px; }
+      .ippo-btn-time { font-size: 14px; }
+
+      /* Free add */
+      .free-add-card { padding: 16px; margin-bottom: 12px; }
+      .free-add-title { font-size: 14px; margin-bottom: 12px; }
+      .free-btn { font-size: 18px; padding: 10px 24px; }
+      .free-btn-add { font-size: 18px; padding: 10px 24px; }
+
+      /* Bottom nav */
+      .nav-item { font-size: 12px; }
+      .nav-icon { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<main class="main">
+
+  <!-- Wait Time Card -->
+  <div class="wait-card">
+    <div class="wait-card-inner">
+      <!-- 左列: ラベル(上)・時間表示(中)・バッジ+減算(下) -->
+      <div class="wait-card-left">
+        <div class="wait-card-label"><span>🕐</span><span>現在の待ち時間</span></div>
+        <div class="wait-time-row" id="waitTimeRow">
+          <span class="wait-time-num" id="waitTimeNum">0</span>
+          <span class="wait-time-unit">分</span>
+          <div class="wait-secs-wrap">
+            <span class="wait-secs-num" id="waitSecsNum">00</span>
+            <span class="wait-secs-unit">秒</span>
+          </div>
+        </div>
+        <div class="wait-card-bottom-left">
+          <span class="wait-status-badge" id="statusBadge">通常</span>
+          <button class="subtract-inline-btn" id="subtractBtn">－ <span id="subtractLabel">5</span>分</button>
+        </div>
+      </div>
+      <!-- 仕切り線 -->
+      <div class="wait-card-divider"></div>
+      <!-- 右列: ラベル(上)・人数(中)・-1ボタン(下) -->
+      <div class="wait-card-right">
+        <div class="pharm-right-label">薬剤師</div>
+        <div class="pharm-right-count"><span id="effectiveCountDisplay">3</span><span class="unit">人</span></div>
+        <button class="minus-one-info" id="minusInfoDisplay">-1：残り0分</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Left: Pharmacist Panel -->
+    <div class="panel-card">
+      <div class="panel-title">
+        薬剤師人数
+        <span class="help-icon" id="pharmHelp">?</span>
+      </div>
+      <div class="mode-row-top">
+        <button class="mode-btn" id="modeAuto">自動</button>
+        <button class="mode-btn" id="modeManual">手動</button>
+      </div>
+      <div class="pharm-btn-group" id="pharmBtnGroup"></div>
+      <div class="pharm-status-info" id="pharmStatusInfo"></div>
+    </div>
+
+    <!-- Right: Prescription Grid -->
+    <div class="panel-card">
+      <div class="panel-title">
+        処方の重さ
+        <span class="help-icon" id="prescHelp">?</span>
+      </div>
+      <div class="presc-container collapsed" id="prescContainer">
+        <div class="presc-header-row" id="prescHeaderRow">
+          <div class="presc-col-head">小<span class="presc-col-sub">（軽い）</span></div>
+          <div class="presc-col-head">中<span class="presc-col-sub">（標準）</span></div>
+          <div class="presc-col-head" style="display:flex;align-items:center;justify-content:center;">
+            <button class="large-toggle-btn" id="largeToggleBtn">大 ▶</button>
+            <span class="large-head-text">大<span class="presc-col-sub">（重い）</span></span>
+          </div>
+        </div>
+        <div class="presc-grid" id="prescGrid"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Panels -->
+  <div class="bottom-panels">
+    <div class="sub-panel">
+      <div class="sub-panel-title">軟膏<span class="help-icon" id="ointHelp">?</span></div>
+      <div class="sub-panel-btns">
+        <button class="sub-btn" id="ointPreBtn">予製あり<span class="sub-btn-time" id="ointPreTime">2分</span></button>
+        <button class="sub-btn" id="ointNoBtn">予製なし<span class="sub-btn-time" id="ointNoTime">5分</span></button>
+      </div>
+    </div>
+    <div class="sub-panel">
+      <div class="sub-panel-title">粉<span class="help-icon" id="powderHelp">?</span></div>
+      <div class="sub-panel-btns">
+        <button class="sub-btn" id="powderPreBtn">ディメロあり<span class="sub-btn-time" id="powderPreTime">3分</span></button>
+        <button class="sub-btn" id="powderNoBtn">ディメロなし<span class="sub-btn-time" id="powderNoTime">6分</span></button>
+      </div>
+    </div>
+    <div class="sub-panel">
+      <div class="sub-panel-title">一包化<span class="help-icon" id="ippoHelp">?</span></div>
+      <div class="ippo-btns">
+        <button class="ippo-btn" id="ippoBtn">すぐ受け取り<span class="ippo-btn-time">時間を設定</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Free Add -->
+  <div class="free-add-card">
+    <div class="free-add-title">その他の加算<span class="help-icon" id="freeHelp">?</span></div>
+    <div class="free-add-row" id="freeAddRow"></div>
+  </div>
+
+</main>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item" id="navMemo"><span class="nav-icon">📝</span>メモ</button>
+  <button class="nav-item" id="navSettings"><span class="nav-icon">⚙️</span>設定</button>
+  <button class="nav-item" id="navHistory"><span class="nav-icon">🕐</span>履歴</button>
+  <button class="nav-item" id="navUndo" style="opacity:0.35;pointer-events:none;color:var(--clr-orange);">
+    <span class="nav-icon">↩</span><span class="nav-label">戻す</span>
+  </button>
+</nav>
+
+<!-- ===== MODALS ===== -->
+
+<!-- 手入力 -->
+<div class="overlay" id="manualInputOverlay">
+  <div class="modal">
+    <div class="modal-title">待ち時間を手入力</div>
+    <input class="modal-input" type="number" id="manualInputField" min="0" max="999" placeholder="分" inputmode="numeric">
+    <div class="minus-one-quick-row">
+      <button class="minus-one-quick-btn zero-btn" id="manualResetBtn">0分リセット</button>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="manualCancel">キャンセル</button>
+      <button class="modal-confirm" id="manualConfirm">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- -1残り時間 編集 -->
+<div class="overlay" id="minusOneOverlay">
+  <div class="modal">
+    <div class="modal-title">-1 残り時間を編集</div>
+    <div class="modal-sublabel">残り時間（分）</div>
+    <input class="modal-input" type="number" id="minusOneField" min="0" max="999" placeholder="分" inputmode="numeric">
+    <div class="minus-one-quick-row">
+      <button class="minus-one-quick-btn minus-btn" id="minusOneMinusBtn">－1分</button>
+      <button class="minus-one-quick-btn" id="minusOnePlusBtn">＋1分</button>
+      <button class="minus-one-quick-btn zero-btn" id="minusOneZeroBtn">0分</button>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="minusOneCancel">キャンセル</button>
+      <button class="modal-confirm" id="minusOneConfirm">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 一包化 -->
+<div class="overlay" id="ippoOverlay">
+  <div class="modal">
+    <div class="modal-title">一包化の対応時間</div>
+    <div class="ippo-preset-grid">
+      <button class="ippo-preset-btn" data-min="5">5<span class="unit">分</span></button>
+      <button class="ippo-preset-btn" data-min="10">10<span class="unit">分</span></button>
+      <button class="ippo-preset-btn" data-min="15">15<span class="unit">分</span></button>
+      <button class="ippo-preset-btn" data-min="20">20<span class="unit">分</span></button>
+      <button class="ippo-preset-btn" data-min="25">25<span class="unit">分</span></button>
+      <button class="ippo-preset-btn" data-min="30">30<span class="unit">分</span></button>
+      <button class="ippo-preset-btn" data-min="40">40<span class="unit">分</span></button>
+      <button class="ippo-preset-btn" data-min="50">50<span class="unit">分</span></button>
+      <button class="ippo-preset-btn" data-min="60">60<span class="unit">分</span></button>
+    </div>
+    <div class="modal-sublabel">または手入力</div>
+    <input class="modal-input" type="number" id="ippoInputField" min="1" max="180" placeholder="分" inputmode="numeric">
+    <div class="modal-btns">
+      <button class="modal-cancel" id="ippoCancel">キャンセル</button>
+      <button class="modal-confirm" id="ippoConfirm">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 処方 編集（長押し）-->
+<div class="overlay" id="prescEditOverlay">
+  <div class="modal">
+    <div class="modal-title" id="prescEditTitle">ボタンを編集</div>
+    <div class="modal-sublabel">加算時間（分）</div>
+    <input class="modal-input" type="number" id="prescEditMinutes" min="1" max="120" inputmode="numeric">
+    <div class="modal-hint" id="prescEditHint"></div>
+    <div class="modal-sublabel">注釈テキスト</div>
+    <input class="modal-input text-mode" type="text" id="prescEditAnnotation" maxlength="30" placeholder="例：通常処方">
+    <div class="modal-btns">
+      <button class="modal-cancel" id="prescEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="prescEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 軟膏 編集 -->
+<div class="overlay" id="ointEditOverlay">
+  <div class="modal">
+    <div class="modal-title">軟膏 時間を編集</div>
+    <div class="sub-edit-row"><label>予製あり（分）</label><input type="number" id="ointPreEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="sub-edit-row"><label>予製なし（分）</label><input type="number" id="ointNoEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="sub-edit-row"><label>予製なし -1時間</label><input type="number" id="ointNoMinusEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="ointEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="ointEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 粉 編集 -->
+<div class="overlay" id="powderEditOverlay">
+  <div class="modal">
+    <div class="modal-title">粉 時間を編集</div>
+    <div class="sub-edit-row"><label>ディメロあり（分）</label><input type="number" id="powderPreEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="sub-edit-row"><label>ディメロなし（分）</label><input type="number" id="powderNoEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="sub-edit-row"><label>ディメロなし -1時間</label><input type="number" id="powderNoMinusEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="powderEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="powderEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自由加算 編集 -->
+<div class="overlay" id="freeEditOverlay">
+  <div class="modal">
+    <div class="modal-title">加算ボタンを編集</div>
+    <div class="modal-sublabel">時間（分）</div>
+    <input class="modal-input" type="number" id="freeEditField" min="1" max="999" inputmode="numeric">
+    <div class="modal-btns">
+      <button class="modal-cancel" id="freeEditDelete" style="background:#fdecea;color:var(--clr-red);">削除</button>
+      <button class="modal-cancel" id="freeEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="freeEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自由加算 追加 -->
+<div class="overlay" id="freeAddOverlay">
+  <div class="modal">
+    <div class="modal-title">加算ボタンを追加</div>
+    <input class="modal-input" type="number" id="freeAddInputField" min="1" max="999" placeholder="分" inputmode="numeric">
+    <div class="modal-btns">
+      <button class="modal-cancel" id="freeAddCancel">キャンセル</button>
+      <button class="modal-confirm" id="freeAddConfirm">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- -5分 編集 -->
+<div class="overlay" id="subtractEditOverlay">
+  <div class="modal">
+    <div class="modal-title">減算時間を編集</div>
+    <div class="modal-sublabel">減算する時間（分）</div>
+    <input class="modal-input" type="number" id="subtractEditField" min="1" max="60" inputmode="numeric">
+    <div class="modal-btns">
+      <button class="modal-cancel" id="subtractEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="subtractEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title">⚙️ 設定</div>
+    <div class="settings-section">
+      <div class="settings-label">音通知の閾値</div>
+      <div class="settings-row">
+        <input class="settings-input" type="number" id="soundThresholdSetting" min="1" max="120" inputmode="numeric">
+        <span class="settings-unit">分以上で通知</span>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">音通知</div>
+      <div class="sound-toggle-row">
+        <span class="sound-toggle-label">🔊 音：ON / OFF</span>
+        <input type="checkbox" class="toggle-switch" id="soundToggleCheck">
+      </div>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-section">
+      <div class="settings-label">薬剤師人数の段階</div>
+      <div id="pharmCountSettings"></div>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-section">
+      <button class="danger-btn" id="resetBtn">🗑 データをリセット</button>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="settingsClose">閉じる</button>
+      <button class="modal-confirm" id="settingsSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Reset -->
+<div class="overlay" id="confirmResetOverlay">
+  <div class="modal">
+    <div class="modal-title">⚠️ リセット確認</div>
+    <p class="modal-reset-msg">すべてのデータをリセットします。<br>この操作は取り消せません。</p>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="resetCancel">キャンセル</button>
+      <button class="modal-confirm" id="resetConfirm" style="background:var(--clr-red);">リセット</button>
+    </div>
+  </div>
+</div>
+
+<!-- メモ -->
+<div class="overlay" id="memoOverlay">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">📝 メモ</div>
+    <div class="modal-list" id="memoList"></div>
+    <div class="memo-add-area" style="margin-bottom:14px;">
+      <textarea class="memo-textarea" id="memoTextarea" placeholder="メモを入力..." rows="2"></textarea>
+      <button class="memo-add-btn" id="memoAddBtn">追加</button>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-confirm" id="memoClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 履歴 -->
+<div class="overlay" id="historyOverlay">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">🕐 履歴</div>
+    <div class="modal-list" id="historyList"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="clearLogBtn">ログ消去</button>
+      <button class="modal-confirm" id="historyClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip-overlay" id="tooltipOverlay">
+  <div class="tooltip-box" id="tooltipBox"></div>
+</div>
+
+<script>
+// ============================================================
+//  CONSTANTS
+// ============================================================
+const DEFAULT_TIME_TABLE = {
+  3: { small: 4,  medium: 7,  large: 10 },
+  2: { small: 6,  medium: 9,  large: 13 },
+  1: { small: 8,  medium: 14, large: 20 }
+};
+const TYPE_LABEL = { small: '小', medium: '中', large: '大' };
+const COLOR_NORMAL  = { color: '#4a7fa5', bg: '#deeaf4', badge: '通常' };
+const COLOR_WARNING = { color: '#c87941', bg: '#fde8d0', badge: '混雑' };
+const COLOR_DANGER  = { color: '#c94a4a', bg: '#fde5e5', badge: '大混雑' };
+const IPPO_PRESETS  = [5, 10, 15, 20, 25, 30, 40, 50, 60];
+
+// ============================================================
+//  STATE
+// ============================================================
+let state = {
+  waitTime: 0,
+  basePharmacistCount: 3,
+  minusOneRemainingTime: 0,
+  lastUpdateTimestamp: Date.now(),
+  mode: 'auto',
+  soundEnabled: true,
+  subtractMinutes: 5,
+  soundThreshold: 15,
+  maxPharmacistCount: 3,
+  ointPremadeWait: 2,
+  ointNoPremadeWait: 5,
+  ointNoPremadeMinus: 5,
+  powderDimeloWait: 3,
+  powderNoDimeloWait: 6,
+  powderNoDimeloMinus: 6,
+  freeAddValues: [1, 2, 5, 10, 15, 20, 30],
+  customTimeTable: {},
+  customAnnotations: {},
+  memos: [],
+  actionLog: []
+};
+
+let audioCtx = null;
+let lastSoundMinute = -1;
+let prescExpanded = false;
+let undoStack = [];
+const UNDO_MAX = 10;
+
+function pushUndo(description) {
+  undoStack.push({
+    waitTime: state.waitTime,
+    minusOneRemainingTime: state.minusOneRemainingTime,
+    description
+  });
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  renderUndoBtn();
+}
+
+function doUndo() {
+  if (!undoStack.length) return;
+  const snap = undoStack.pop();
+  state.waitTime              = snap.waitTime;
+  state.minusOneRemainingTime = snap.minusOneRemainingTime;
+  addLog(`↩ 取消：${snap.description}`, 0, state.waitTime);
+  saveState(); renderAll(); renderUndoBtn();
+  showUndoToast(`「${snap.description}」を取り消しました`);
+}
+
+function renderUndoBtn() {
+  const btn = document.getElementById('navUndo');
+  if (!btn) return;
+  if (undoStack.length > 0) {
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  } else {
+    btn.style.opacity = '0.35';
+    btn.style.pointerEvents = 'none';
+  }
+}
+
+let undoToastTimer = null;
+function showUndoToast(msg) {
+  let toast = document.getElementById('undoToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'undoToast';
+    toast.style.cssText = `
+      position:fixed; bottom:72px; left:50%; transform:translateX(-50%);
+      background:rgba(44,62,80,0.88); color:white; padding:10px 20px;
+      border-radius:20px; font-size:13px; font-weight:600; z-index:500;
+      pointer-events:none; white-space:nowrap; transition: opacity 0.3s;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(undoToastTimer);
+  undoToastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+}
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function getTimeValue(pharmCount, type) {
+  const key = `${pharmCount}_${type}`;
+  if (state.customTimeTable[key] != null) return state.customTimeTable[key];
+  const row = DEFAULT_TIME_TABLE[pharmCount] || DEFAULT_TIME_TABLE[1];
+  return row[type];
+}
+function getAnnotationText(pharmCount, type) {
+  const key = `${pharmCount}_${type}`;
+  return state.customAnnotations[key] || `処方（${pharmCount}人/${TYPE_LABEL[type]}）`;
+}
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function init() {
+  loadState();
+  catchUpTime();
+  buildPharmButtons();
+  buildPrescGrid();
+  setupAllButtons();
+  renderAll(59);
+  setInterval(tick, 1000);
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('pharmacyWait_v4');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(state, parsed);
+      if (!state.customTimeTable)   state.customTimeTable   = {};
+      if (!state.customAnnotations) state.customAnnotations = {};
+      if (!state.actionLog)         state.actionLog         = [];
+      if (!state.memos)             state.memos             = [];
+      if (!state.freeAddValues)     state.freeAddValues     = [1,2,5,10,15,20,30];
+      if (!state.freeAddValues.includes(1)) state.freeAddValues.unshift(1);
+      if (state.maxPharmacistCount  == null) state.maxPharmacistCount  = 3;
+      if (state.ointPremadeWait     == null) state.ointPremadeWait     = 2;
+      if (state.ointNoPremadeWait   == null) state.ointNoPremadeWait   = 5;
+      if (state.ointNoPremadeMinus  == null) state.ointNoPremadeMinus  = 5;
+      if (state.powderDimeloWait    == null) state.powderDimeloWait    = 3;
+      if (state.powderNoDimeloWait  == null) state.powderNoDimeloWait  = 6;
+      if (state.powderNoDimeloMinus == null) state.powderNoDimeloMinus = 6;
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  try { localStorage.setItem('pharmacyWait_v4', JSON.stringify(state)); } catch(e) {}
+}
+
+function catchUpTime() {
+  const now  = Date.now();
+  const mins = Math.floor((now - (state.lastUpdateTimestamp || now)) / 60000);
+  if (mins > 0) {
+    state.waitTime              = Math.max(0, state.waitTime - mins);
+    state.minusOneRemainingTime = Math.max(0, state.minusOneRemainingTime - mins);
+    state.lastUpdateTimestamp   = now;
+    saveState();
+  }
+}
+
+// ============================================================
+//  TIMER
+// ============================================================
+function tick() {
+  const now         = Date.now();
+  const elapsed     = now - state.lastUpdateTimestamp;
+  const mins        = Math.floor(elapsed / 60000);
+  const secsElapsed = Math.floor((elapsed % 60000) / 1000);
+  const secsDisplay = 59 - secsElapsed;
+
+  if (mins > 0) {
+    state.waitTime              = Math.max(0, state.waitTime - mins);
+    state.minusOneRemainingTime = Math.max(0, state.minusOneRemainingTime - mins);
+    state.lastUpdateTimestamp  += mins * 60000;
+    saveState();
+  }
+
+  if (secsDisplay === 0 && state.waitTime > 0 && state.soundEnabled) {
+    const thr = state.soundThreshold || 15;
+    if (state.waitTime >= thr && state.waitTime % 5 === 0 && state.waitTime !== lastSoundMinute) {
+      lastSoundMinute = state.waitTime;
+      playSoundB();
+    }
+  }
+
+  renderAll(secsDisplay);
+}
+
+// ============================================================
+//  BUILD DOM
+// ============================================================
+function buildPharmButtons() {
+  const group = document.getElementById('pharmBtnGroup');
+  group.innerHTML = '';
+  const max = state.maxPharmacistCount || 3;
+  for (let n = max; n >= 1; n--) {
+    const btn = document.createElement('button');
+    btn.className = 'pharm-btn';
+    btn.dataset.count = n;
+    btn.textContent = `${n}人`;
+    btn.addEventListener('click', () => setBase(n));
+    group.appendChild(btn);
+  }
+}
+
+function buildPrescGrid() {
+  const grid = document.getElementById('prescGrid');
+  grid.innerHTML = '';
+  const max = state.maxPharmacistCount || 3;
+  for (let n = max; n >= 1; n--) {
+    ['small','medium','large'].forEach(type => {
+      const btn = document.createElement('button');
+      btn.className = 'presc-btn';
+      btn.dataset.pharm = n;
+      btn.dataset.type  = type;
+      const mins = getTimeValue(n, type);
+      btn.innerHTML = `${mins}<span class="unit">分</span>`;
+      grid.appendChild(btn);
+    });
+  }
+  setupPrescButtons();
+}
+
+// ============================================================
+//  大カラム トグル
+// ============================================================
+function toggleLargeColumn(autoCollapse) {
+  const container = document.getElementById('prescContainer');
+  const btn       = document.getElementById('largeToggleBtn');
+  if (autoCollapse) {
+    prescExpanded = false;
+  } else {
+    prescExpanded = !prescExpanded;
+  }
+  if (prescExpanded) {
+    container.classList.remove('collapsed');
+    btn.textContent = '大 ◀';
+  } else {
+    container.classList.add('collapsed');
+    btn.textContent = '大 ▶';
+  }
+}
+
+// ============================================================
+//  DERIVED
+// ============================================================
+function getEffective() {
+  if (state.mode === 'manual') return state.basePharmacistCount;
+  return Math.max(1, state.basePharmacistCount - (state.minusOneRemainingTime > 0 ? 1 : 0));
+}
+
+// ============================================================
+//  RENDER
+// ============================================================
+function renderAll(secs) {
+  renderWaitCard(secs);
+  renderPharmButtons();
+  renderPrescGrid();
+  renderFreeAdd();
+  renderSubPanelTimes();
+}
+
+function renderWaitCard(secs) {
+  const wt  = state.waitTime;
+  const c   = wt >= 40 ? COLOR_DANGER : wt >= 30 ? COLOR_WARNING : COLOR_NORMAL;
+  const eff = getEffective();
+
+  document.getElementById('waitTimeNum').textContent           = wt;
+  document.getElementById('effectiveCountDisplay').textContent = eff;
+  document.getElementById('statusBadge').textContent           = c.badge;
+  document.documentElement.style.setProperty('--dyn-color', c.color);
+  document.documentElement.style.setProperty('--dyn-bg',    c.bg);
+
+  const secsStr = (secs != null) ? String(secs).padStart(2,'0') : '00';
+  document.getElementById('waitSecsNum').textContent = secsStr;
+
+  // V3: opacity で表示/非表示（レイアウト維持のため）
+  const minusBtn = document.getElementById('minusInfoDisplay');
+  if (state.minusOneRemainingTime > 0 && state.mode === 'auto') {
+    minusBtn.textContent = `-1：残り${state.minusOneRemainingTime}分`;
+    minusBtn.classList.add('visible');
+  } else {
+    // テキストを保持してサイズを維持（なければプレースホルダー）
+    if (!minusBtn.textContent || minusBtn.textContent === '-1：残り0分') {
+      minusBtn.textContent = '-1：残り0分';
+    }
+    minusBtn.classList.remove('visible');
+  }
+
+  document.getElementById('subtractLabel').textContent = state.subtractMinutes;
+}
+
+function renderPharmButtons() {
+  const eff  = getEffective();
+  const base = state.basePharmacistCount;
+  document.querySelectorAll('.pharm-btn').forEach(btn => {
+    const n = parseInt(btn.dataset.count);
+    btn.classList.toggle('is-effective', n === eff);
+    btn.classList.toggle('is-base',      n === base);
+  });
+  document.getElementById('modeAuto').classList.toggle('active',   state.mode === 'auto');
+  document.getElementById('modeManual').classList.toggle('active', state.mode === 'manual');
+
+  const info = document.getElementById('pharmStatusInfo');
+  if (state.mode === 'auto' && state.minusOneRemainingTime > 0)
+    info.innerHTML = `ベース：${base}人<br>実効：${eff}人（-1中）`;
+  else if (state.mode === 'manual')
+    info.innerHTML = `手動モード　実効：${eff}人`;
+  else
+    info.innerHTML = `ベース：${base}人　実効：${eff}人`;
+}
+
+function renderPrescGrid() {
+  const eff = getEffective();
+  document.querySelectorAll('.presc-btn').forEach(btn => {
+    const pc   = parseInt(btn.dataset.pharm);
+    const tp   = btn.dataset.type;
+    const mins = getTimeValue(pc, tp);
+    btn.classList.toggle('active-row', pc === eff);
+    btn.innerHTML = `${mins}<span class="unit">分</span>`;
+  });
+}
+
+function renderFreeAdd() {
+  const row = document.getElementById('freeAddRow');
+  row.innerHTML = '';
+  state.freeAddValues.forEach((v, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'free-btn';
+    btn.textContent = `${v}分`;
+    setupFreeBtnEvents(btn, v, idx);
+    row.appendChild(btn);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'free-btn-add';
+  addBtn.textContent = '＋ 追加';
+  addBtn.addEventListener('click', openFreeAddDialog);
+  row.appendChild(addBtn);
+}
+
+function renderSubPanelTimes() {
+  document.getElementById('ointPreTime').textContent   = `${state.ointPremadeWait}分`;
+  document.getElementById('ointNoTime').textContent    = `${state.ointNoPremadeWait}分`;
+  document.getElementById('powderPreTime').textContent = `${state.powderDimeloWait}分`;
+  document.getElementById('powderNoTime').textContent  = `${state.powderNoDimeloWait}分`;
+}
+
+// ============================================================
+//  LONG PRESS HELPERS
+// ============================================================
+function makeLongPress(btn, onTap, onLong) {
+  let pressTimer = null, didLong = false, lastTouch = 0;
+  const start  = () => { didLong = false; pressTimer = setTimeout(() => { didLong = true; onLong(); }, 600); };
+  const cancel = () => { clearTimeout(pressTimer); pressTimer = null; };
+  btn.addEventListener('touchstart',  start,  { passive: true });
+  btn.addEventListener('touchmove',   cancel, { passive: true });
+  btn.addEventListener('touchend', (e) => {
+    cancel(); lastTouch = Date.now();
+    if (!didLong) { e.preventDefault(); onTap(); }
+    setTimeout(() => { didLong = false; }, 50);
+  });
+  btn.addEventListener('touchcancel', () => { cancel(); didLong = false; });
+  btn.addEventListener('mousedown',   () => { if (Date.now() - lastTouch < 600) return; start(); });
+  btn.addEventListener('mouseup',     cancel);
+  btn.addEventListener('mouseleave',  cancel);
+  btn.addEventListener('click', (e) => {
+    if (Date.now() - lastTouch < 600) return;
+    if (didLong) { didLong = false; return; }
+    onTap();
+  });
+}
+
+function setupFreeBtnEvents(btn, value, idx) {
+  makeLongPress(btn,
+    () => { addFreeTime(value); bounce(btn); },
+    () => openFreeEditModal(idx)
+  );
+}
+
+// ============================================================
+//  ACTIONS
+// ============================================================
+function addPrescTime(pharmCount, type, btn) {
+  const mins = getTimeValue(pharmCount, type);
+  pushUndo(getAnnotationText(pharmCount, type) + ` +${mins}分`);
+  const prev = state.waitTime;
+  state.waitTime += mins;
+  checkSoundBoundary(prev, state.waitTime);
+  addLog(`${getAnnotationText(pharmCount, type)} +${mins}分`, mins, state.waitTime);
+  saveState(); renderAll();
+  if (btn) bounce(btn);
+  if (prescExpanded) toggleLargeColumn(true);
+}
+
+function addOintment(hasPremade) {
+  pushUndo(hasPremade ? `軟膏（予製あり）` : `軟膏（予製なし）`);
+  const prev = state.waitTime;
+  if (hasPremade) {
+    const w = state.ointPremadeWait;
+    state.waitTime += w;
+    checkSoundBoundary(prev, state.waitTime);
+    addLog(`軟膏（予製あり）+${w}分`, w, state.waitTime);
+  } else {
+    const w = state.ointNoPremadeWait, m = state.ointNoPremadeMinus;
+    state.waitTime += w; state.minusOneRemainingTime += m;
+    checkSoundBoundary(prev, state.waitTime);
+    addLog(`軟膏（予製なし）+${w}分/-1×${m}分`, w, state.waitTime);
+  }
+  saveState(); renderAll();
+}
+
+function addPowder(hasDimelo) {
+  pushUndo(hasDimelo ? `粉（ディメロあり）` : `粉（ディメロなし）`);
+  const prev = state.waitTime;
+  if (hasDimelo) {
+    const w = state.powderDimeloWait;
+    state.waitTime += w;
+    checkSoundBoundary(prev, state.waitTime);
+    addLog(`粉（ディメロあり）+${w}分`, w, state.waitTime);
+  } else {
+    const w = state.powderNoDimeloWait, m = state.powderNoDimeloMinus;
+    state.waitTime += w; state.minusOneRemainingTime += m;
+    checkSoundBoundary(prev, state.waitTime);
+    addLog(`粉（ディメロなし）+${w}分/-1×${m}分`, w, state.waitTime);
+  }
+  saveState(); renderAll();
+}
+
+function addFreeTime(minutes) {
+  pushUndo(`自由加算 +${minutes}分`);
+  const prev = state.waitTime;
+  state.waitTime += minutes;
+  checkSoundBoundary(prev, state.waitTime);
+  addLog(`自由加算 +${minutes}分`, minutes, state.waitTime);
+  saveState(); renderAll();
+}
+
+function subtractTime() {
+  pushUndo(`－${state.subtractMinutes}分`);
+  const prev = state.waitTime;
+  state.waitTime = Math.max(0, state.waitTime - state.subtractMinutes);
+  checkSoundBoundary(prev, state.waitTime);
+  addLog(`${state.subtractMinutes}分戻す`, -(prev - state.waitTime), state.waitTime);
+  saveState(); renderAll();
+}
+
+function setBase(n) {
+  state.basePharmacistCount = n;
+  addLog(`薬剤師人数を${n}人に変更`, 0, state.waitTime);
+  saveState(); renderAll();
+}
+function setMode(m) { state.mode = m; saveState(); renderAll(); }
+
+// ============================================================
+//  SOUND
+// ============================================================
+function getAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playSoundA() {
+  try {
+    const ctx = getAudio(); if (!ctx) return;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.55, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+function playSoundB() {
+  try {
+    const ctx = getAudio(); if (!ctx) return;
+    const t = ctx.currentTime, dur = 0.6;
+    [[880,0.30,0.60],[1760,0.18,0.50],[3520,0.09,0.40]].forEach(([freq,vol,dec]) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.985, t + dur);
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.linearRampToValueAtTime(vol, t + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dec);
+      osc.start(t); osc.stop(t + dur);
+    });
+  } catch(e) {}
+}
+function checkSoundBoundary(prev, next) {
+  if (!state.soundEnabled) return;
+  const thr = state.soundThreshold || 15;
+  if (prev < thr && next < thr) return;
+  if (Math.floor(prev/5) === Math.floor(next/5)) return;
+  next > prev ? playSoundA() : playSoundB();
+}
+
+// ============================================================
+//  PRESC EDIT MODAL（長押し）
+// ============================================================
+let editingPharm = null, editingType = null;
+function openPrescEditModal(pharmCount, type) {
+  editingPharm = pharmCount; editingType = type;
+  const mins    = getTimeValue(pharmCount, type);
+  const defRow  = DEFAULT_TIME_TABLE[pharmCount] || DEFAULT_TIME_TABLE[1];
+  const defMins = defRow[type];
+  const annot   = state.customAnnotations[`${pharmCount}_${type}`] || '';
+  document.getElementById('prescEditTitle').textContent      = `【${pharmCount}人 / ${TYPE_LABEL[type]}処方】を編集`;
+  document.getElementById('prescEditMinutes').value          = mins;
+  document.getElementById('prescEditHint').textContent       = `初期値：${defMins}分`;
+  document.getElementById('prescEditAnnotation').value       = annot;
+  document.getElementById('prescEditAnnotation').placeholder = getAnnotationText(pharmCount, type);
+  openOverlay('prescEditOverlay');
+  setTimeout(() => { const f = document.getElementById('prescEditMinutes'); f.focus(); f.select(); }, 100);
+}
+function confirmPrescEdit() {
+  const mins  = parseInt(document.getElementById('prescEditMinutes').value);
+  const annot = document.getElementById('prescEditAnnotation').value.trim();
+  const key   = `${editingPharm}_${editingType}`;
+  if (!isNaN(mins) && mins > 0) state.customTimeTable[key] = mins;
+  state.customAnnotations[key] = annot;
+  saveState(); renderPrescGrid();
+  closeOverlay('prescEditOverlay');
+}
+
+// ============================================================
+//  OINT / POWDER EDIT
+// ============================================================
+function openOintEdit() {
+  document.getElementById('ointPreEdit').value     = state.ointPremadeWait;
+  document.getElementById('ointNoEdit').value      = state.ointNoPremadeWait;
+  document.getElementById('ointNoMinusEdit').value = state.ointNoPremadeMinus;
+  openOverlay('ointEditOverlay');
+}
+function confirmOintEdit() {
+  const pre = parseInt(document.getElementById('ointPreEdit').value);
+  const no  = parseInt(document.getElementById('ointNoEdit').value);
+  const nom = parseInt(document.getElementById('ointNoMinusEdit').value);
+  if (!isNaN(pre) && pre > 0) state.ointPremadeWait    = pre;
+  if (!isNaN(no)  && no  > 0) state.ointNoPremadeWait  = no;
+  if (!isNaN(nom) && nom > 0) state.ointNoPremadeMinus = nom;
+  saveState(); renderSubPanelTimes(); closeOverlay('ointEditOverlay');
+}
+function openPowderEdit() {
+  document.getElementById('powderPreEdit').value     = state.powderDimeloWait;
+  document.getElementById('powderNoEdit').value      = state.powderNoDimeloWait;
+  document.getElementById('powderNoMinusEdit').value = state.powderNoDimeloMinus;
+  openOverlay('powderEditOverlay');
+}
+function confirmPowderEdit() {
+  const pre = parseInt(document.getElementById('powderPreEdit').value);
+  const no  = parseInt(document.getElementById('powderNoEdit').value);
+  const nom = parseInt(document.getElementById('powderNoMinusEdit').value);
+  if (!isNaN(pre) && pre > 0) state.powderDimeloWait    = pre;
+  if (!isNaN(no)  && no  > 0) state.powderNoDimeloWait  = no;
+  if (!isNaN(nom) && nom > 0) state.powderNoDimeloMinus = nom;
+  saveState(); renderSubPanelTimes(); closeOverlay('powderEditOverlay');
+}
+
+// ============================================================
+//  FREE EDIT
+// ============================================================
+let editingFreeIdx = -1;
+function openFreeEditModal(idx) {
+  editingFreeIdx = idx;
+  document.getElementById('freeEditField').value = state.freeAddValues[idx];
+  openOverlay('freeEditOverlay');
+  setTimeout(() => { const f = document.getElementById('freeEditField'); f.focus(); f.select(); }, 100);
+}
+function confirmFreeEdit() {
+  const val = parseInt(document.getElementById('freeEditField').value);
+  if (!isNaN(val) && val > 0 && editingFreeIdx >= 0) {
+    state.freeAddValues[editingFreeIdx] = val;
+    state.freeAddValues.sort((a,b) => a - b);
+    saveState(); renderFreeAdd();
+  }
+  closeOverlay('freeEditOverlay');
+}
+function deleteFreeEdit() {
+  if (editingFreeIdx >= 0) {
+    state.freeAddValues.splice(editingFreeIdx, 1);
+    saveState(); renderFreeAdd();
+  }
+  closeOverlay('freeEditOverlay');
+}
+
+// ============================================================
+//  SUBTRACT EDIT
+// ============================================================
+function openSubtractEdit() {
+  document.getElementById('subtractEditField').value = state.subtractMinutes;
+  openOverlay('subtractEditOverlay');
+  setTimeout(() => { const f = document.getElementById('subtractEditField'); f.focus(); f.select(); }, 100);
+}
+function confirmSubtractEdit() {
+  const val = parseInt(document.getElementById('subtractEditField').value);
+  if (!isNaN(val) && val > 0) state.subtractMinutes = val;
+  saveState(); renderAll(); closeOverlay('subtractEditOverlay');
+}
+
+// ============================================================
+//  LOG
+// ============================================================
+function addLog(action, delta, result) {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  state.actionLog.unshift({ action, delta, result, time: timeStr });
+  if (state.actionLog.length > 200) state.actionLog.length = 200;
+}
+
+// ============================================================
+//  OVERLAYS
+// ============================================================
+function openOverlay(id)  { document.getElementById(id).classList.add('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function setupOverlayBgClose(id) {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) closeOverlay(id);
+  });
+}
+
+function openManualInput() {
+  const f = document.getElementById('manualInputField');
+  f.value = state.waitTime || '';
+  openOverlay('manualInputOverlay');
+  setTimeout(() => { f.focus(); f.select(); }, 100);
+}
+function confirmManualInput() {
+  const val = parseInt(document.getElementById('manualInputField').value);
+  if (!isNaN(val) && val >= 0) {
+    pushUndo(`手入力（${state.waitTime}分→${val}分）`);
+    const prev = state.waitTime;
+    state.waitTime = val;
+    checkSoundBoundary(prev, val);
+    addLog(`手入力 → ${val}分`, val - prev, val);
+    saveState(); renderAll();
+  }
+  closeOverlay('manualInputOverlay');
+}
+
+function openMinusOneEdit() {
+  document.getElementById('minusOneField').value = state.minusOneRemainingTime;
+  openOverlay('minusOneOverlay');
+  setTimeout(() => { const f = document.getElementById('minusOneField'); f.focus(); f.select(); }, 100);
+}
+function confirmMinusOneEdit() {
+  const val = parseInt(document.getElementById('minusOneField').value);
+  if (!isNaN(val) && val >= 0) {
+    state.minusOneRemainingTime = val;
+    addLog(`-1残り時間を${val}分に設定`, 0, state.waitTime);
+    saveState(); renderAll();
+  }
+  closeOverlay('minusOneOverlay');
+}
+
+function openIppoDialog() {
+  document.getElementById('ippoInputField').value = '';
+  openOverlay('ippoOverlay');
+}
+function confirmIppoWith(val) {
+  if (!isNaN(val) && val > 0) {
+    pushUndo(`一包化 -1×${val}分`);
+    state.minusOneRemainingTime += val;
+    addLog(`一包化（すぐ受け取り）-1×${val}分`, 0, state.waitTime);
+    saveState(); renderAll();
+  }
+  closeOverlay('ippoOverlay');
+  bounce(document.getElementById('ippoBtn'));
+}
+function confirmIppo() {
+  const val = parseInt(document.getElementById('ippoInputField').value);
+  confirmIppoWith(val);
+}
+
+function openFreeAddDialog() {
+  document.getElementById('freeAddInputField').value = '';
+  openOverlay('freeAddOverlay');
+  setTimeout(() => document.getElementById('freeAddInputField').focus(), 100);
+}
+function confirmFreeAdd() {
+  const val = parseInt(document.getElementById('freeAddInputField').value);
+  if (!isNaN(val) && val > 0 && !state.freeAddValues.includes(val)) {
+    state.freeAddValues.push(val);
+    state.freeAddValues.sort((a,b) => a - b);
+    saveState(); renderFreeAdd();
+  }
+  closeOverlay('freeAddOverlay');
+}
+
+// ============================================================
+//  SETTINGS
+// ============================================================
+function openSettings() {
+  document.getElementById('soundThresholdSetting').value = state.soundThreshold;
+  document.getElementById('soundToggleCheck').checked    = state.soundEnabled;
+  renderPharmCountSettings();
+  openOverlay('settingsOverlay');
+}
+function renderPharmCountSettings() {
+  const container = document.getElementById('pharmCountSettings');
+  container.innerHTML = '';
+  const max = state.maxPharmacistCount || 3;
+  for (let n = max; n >= 1; n--) {
+    const row = document.createElement('div');
+    row.className = 'pharm-count-row';
+    row.innerHTML = `<span class="pharm-count-badge">${n}</span><span class="pharm-count-label">${n}人体制</span>`;
+    if (n === max && max > 1) {
+      const del = document.createElement('button');
+      del.className = 'pharm-count-del'; del.textContent = '削除';
+      del.addEventListener('click', () => {
+        state.maxPharmacistCount--;
+        if (state.basePharmacistCount > state.maxPharmacistCount)
+          state.basePharmacistCount = state.maxPharmacistCount;
+        renderPharmCountSettings();
+      });
+      row.appendChild(del);
+    }
+    container.appendChild(row);
+  }
+  const addBtn = document.createElement('button');
+  addBtn.className = 'pharm-count-add';
+  addBtn.textContent = `＋ ${max + 1}人体制を追加`;
+  addBtn.addEventListener('click', () => { state.maxPharmacistCount++; renderPharmCountSettings(); });
+  container.appendChild(addBtn);
+}
+function saveSettings() {
+  const t = parseInt(document.getElementById('soundThresholdSetting').value);
+  if (!isNaN(t) && t > 0) state.soundThreshold = t;
+  state.soundEnabled = document.getElementById('soundToggleCheck').checked;
+  saveState(); buildPharmButtons(); buildPrescGrid(); renderAll();
+  closeOverlay('settingsOverlay');
+}
+function doReset() {
+  localStorage.removeItem('pharmacyWait_v4');
+  state = {
+    waitTime:0, basePharmacistCount:3, minusOneRemainingTime:0,
+    lastUpdateTimestamp:Date.now(), mode:'auto', soundEnabled:true,
+    subtractMinutes:5, soundThreshold:15, maxPharmacistCount:3,
+    ointPremadeWait:2, ointNoPremadeWait:5, ointNoPremadeMinus:5,
+    powderDimeloWait:3, powderNoDimeloWait:6, powderNoDimeloMinus:6,
+    freeAddValues:[1,2,5,10,15,20,30],
+    customTimeTable:{}, customAnnotations:{}, memos:[], actionLog:[]
+  };
+  saveState(); buildPharmButtons(); buildPrescGrid(); renderAll();
+  closeOverlay('confirmResetOverlay'); closeOverlay('settingsOverlay');
+}
+
+// ============================================================
+//  MEMO
+// ============================================================
+function openMemo() { renderMemoList(); openOverlay('memoOverlay'); }
+function renderMemoList() {
+  const el = document.getElementById('memoList');
+  if (!state.memos.length) { el.innerHTML = '<div class="memo-empty">メモはありません</div>'; return; }
+  el.innerHTML = state.memos.map((m, i) => `
+    <div class="memo-item">
+      <div class="memo-text">${escHtml(m.text)}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+        <span class="memo-time">${escHtml(m.time)}</span>
+        <button class="memo-del" data-idx="${i}">✕</button>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('.memo-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.memos.splice(parseInt(btn.dataset.idx), 1);
+      saveState(); renderMemoList();
+    });
+  });
+}
+function addMemo() {
+  const ta = document.getElementById('memoTextarea');
+  const text = ta.value.trim(); if (!text) return;
+  const now = new Date();
+  state.memos.push({ text, time: now.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' }) });
+  saveState(); ta.value = ''; renderMemoList();
+}
+
+// ============================================================
+//  HISTORY
+// ============================================================
+function openHistory() { renderHistoryList(); openOverlay('historyOverlay'); }
+function renderHistoryList() {
+  const el = document.getElementById('historyList');
+  if (!state.actionLog.length) { el.innerHTML = '<div class="memo-empty">履歴がありません</div>'; return; }
+  el.innerHTML = state.actionLog.map(item => `
+    <div class="memo-item">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${escHtml(item.action)}</div>
+        <div style="font-size:11px;color:var(--clr-sub);">待ち時間：<strong>${item.result}分</strong>${item.delta !== 0 ? `（${item.delta > 0 ? '+' : ''}${item.delta}分）` : ''}</div>
+      </div>
+      <span class="memo-time">${escHtml(item.time)}</span>
+    </div>`).join('');
+}
+
+// ============================================================
+//  TOOLTIP
+// ============================================================
+let tooltipTimeout = null;
+function showTooltip(text) {
+  clearTimeout(tooltipTimeout);
+  document.getElementById('tooltipBox').innerHTML = escHtml(text).replace(/\n/g,'<br>');
+  document.getElementById('tooltipOverlay').classList.add('open');
+  tooltipTimeout = setTimeout(closeTooltip, 4000);
+}
+function closeTooltip() { document.getElementById('tooltipOverlay').classList.remove('open'); }
+
+// ============================================================
+//  BOUNCE
+// ============================================================
+function bounce(el) {
+  if (!el) return;
+  el.classList.remove('btn-bounce'); void el.offsetWidth;
+  el.classList.add('btn-bounce');
+  el.addEventListener('animationend', () => el.classList.remove('btn-bounce'), { once: true });
+}
+
+// ============================================================
+//  SETUP ALL BUTTONS
+// ============================================================
+function setupAllButtons() {
+  document.getElementById('waitTimeRow').addEventListener('click', openManualInput);
+  document.getElementById('minusInfoDisplay').addEventListener('click', openMinusOneEdit);
+  document.getElementById('minusOneMinusBtn').addEventListener('click', () => {
+    const f = document.getElementById('minusOneField');
+    f.value = Math.max(0, (parseInt(f.value) || 0) - 1);
+  });
+  document.getElementById('minusOnePlusBtn').addEventListener('click', () => {
+    const f = document.getElementById('minusOneField');
+    f.value = Math.max(0, (parseInt(f.value) || 0) + 1);
+  });
+  document.getElementById('minusOneZeroBtn').addEventListener('click', () => {
+    document.getElementById('minusOneField').value = 0;
+  });
+
+  document.getElementById('modeAuto').addEventListener('click',   () => setMode('auto'));
+  document.getElementById('modeManual').addEventListener('click', () => setMode('manual'));
+
+  makeLongPress(
+    document.getElementById('subtractBtn'),
+    () => { subtractTime(); bounce(document.getElementById('subtractBtn')); },
+    openSubtractEdit
+  );
+
+  document.getElementById('largeToggleBtn').addEventListener('click', () => toggleLargeColumn(false));
+
+  document.getElementById('pharmHelp').addEventListener('click', () =>
+    showTooltip('薬剤師人数を選択します。\n\n【自動モード】\n-1適用中は実効人数が自動で1人減ります。\n\n【手動モード】\n選択した人数をそのまま使います。自動切替は行われません。'));
+  document.getElementById('prescHelp').addEventListener('click', () =>
+    showTooltip('処方サイズを選択して待ち時間を加算します。\n長押しで時間・注釈を編集。\n「大 ▶」で大サイズを表示。'));
+  document.getElementById('ointHelp').addEventListener('click', () =>
+    showTooltip('軟膏\n予製あり：待ち時間のみ加算\n予製なし：待ち時間＋薬剤師-1\n\n長押しで時間を編集できます'));
+  document.getElementById('powderHelp').addEventListener('click', () =>
+    showTooltip('粉薬\nディメロあり：待ち時間のみ加算\nディメロなし：待ち時間＋薬剤師-1\n\n長押しで時間を編集できます'));
+  document.getElementById('ippoHelp').addEventListener('click', () =>
+    showTooltip('一包化\n薬剤師-1を指定時間適用します\n（待ち時間への加算はありません）'));
+  document.getElementById('freeHelp').addEventListener('click', () =>
+    showTooltip('任意の分数を待ち時間に加算します。\n長押しで編集・削除ができます。'));
+
+  makeLongPress(document.getElementById('ointPreBtn'),   () => { addOintment(true);  bounce(document.getElementById('ointPreBtn'));  }, openOintEdit);
+  makeLongPress(document.getElementById('ointNoBtn'),    () => { addOintment(false); bounce(document.getElementById('ointNoBtn'));   }, openOintEdit);
+  makeLongPress(document.getElementById('powderPreBtn'), () => { addPowder(true);    bounce(document.getElementById('powderPreBtn')); }, openPowderEdit);
+  makeLongPress(document.getElementById('powderNoBtn'),  () => { addPowder(false);   bounce(document.getElementById('powderNoBtn'));  }, openPowderEdit);
+
+  document.getElementById('ippoBtn').addEventListener('click', () => { openIppoDialog(); bounce(document.getElementById('ippoBtn')); });
+
+  document.querySelectorAll('.ippo-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => confirmIppoWith(parseInt(btn.dataset.min)));
+  });
+
+  document.getElementById('navMemo').addEventListener('click',     openMemo);
+  document.getElementById('navSettings').addEventListener('click', openSettings);
+  document.getElementById('navHistory').addEventListener('click',  openHistory);
+  document.getElementById('navUndo').addEventListener('click',     doUndo);
+
+  document.getElementById('manualCancel').addEventListener('click',    () => closeOverlay('manualInputOverlay'));
+  document.getElementById('manualConfirm').addEventListener('click',   confirmManualInput);
+  document.getElementById('manualResetBtn').addEventListener('click',  () => { document.getElementById('manualInputField').value = 0; });
+  document.getElementById('minusOneCancel').addEventListener('click',  () => closeOverlay('minusOneOverlay'));
+  document.getElementById('minusOneConfirm').addEventListener('click', confirmMinusOneEdit);
+  document.getElementById('ippoCancel').addEventListener('click',      () => closeOverlay('ippoOverlay'));
+  document.getElementById('ippoConfirm').addEventListener('click',     confirmIppo);
+  document.getElementById('freeAddCancel').addEventListener('click',   () => closeOverlay('freeAddOverlay'));
+  document.getElementById('freeAddConfirm').addEventListener('click',  confirmFreeAdd);
+  document.getElementById('freeEditDelete').addEventListener('click',  deleteFreeEdit);
+  document.getElementById('freeEditCancel').addEventListener('click',  () => closeOverlay('freeEditOverlay'));
+  document.getElementById('freeEditConfirm').addEventListener('click', confirmFreeEdit);
+  document.getElementById('subtractEditCancel').addEventListener('click',  () => closeOverlay('subtractEditOverlay'));
+  document.getElementById('subtractEditConfirm').addEventListener('click', confirmSubtractEdit);
+  document.getElementById('prescEditCancel').addEventListener('click',  () => closeOverlay('prescEditOverlay'));
+  document.getElementById('prescEditConfirm').addEventListener('click', confirmPrescEdit);
+  document.getElementById('ointEditCancel').addEventListener('click',   () => closeOverlay('ointEditOverlay'));
+  document.getElementById('ointEditConfirm').addEventListener('click',  confirmOintEdit);
+  document.getElementById('powderEditCancel').addEventListener('click',  () => closeOverlay('powderEditOverlay'));
+  document.getElementById('powderEditConfirm').addEventListener('click', confirmPowderEdit);
+  document.getElementById('settingsClose').addEventListener('click', () => closeOverlay('settingsOverlay'));
+  document.getElementById('settingsSave').addEventListener('click',  saveSettings);
+  document.getElementById('resetBtn').addEventListener('click',      () => openOverlay('confirmResetOverlay'));
+  document.getElementById('resetCancel').addEventListener('click',   () => closeOverlay('confirmResetOverlay'));
+  document.getElementById('resetConfirm').addEventListener('click',  doReset);
+  document.getElementById('memoClose').addEventListener('click',     () => closeOverlay('memoOverlay'));
+  document.getElementById('memoAddBtn').addEventListener('click',    addMemo);
+  document.getElementById('clearLogBtn').addEventListener('click',   () => { state.actionLog = []; saveState(); renderHistoryList(); });
+  document.getElementById('historyClose').addEventListener('click',  () => closeOverlay('historyOverlay'));
+
+  document.getElementById('memoTextarea').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addMemo(); }
+  });
+
+  ['manualInputOverlay','minusOneOverlay','ippoOverlay','freeAddOverlay','freeEditOverlay',
+   'subtractEditOverlay','prescEditOverlay','ointEditOverlay','powderEditOverlay',
+   'settingsOverlay','confirmResetOverlay','memoOverlay','historyOverlay'].forEach(id => setupOverlayBgClose(id));
+  document.getElementById('tooltipOverlay').addEventListener('click', closeTooltip);
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      ['manualInputOverlay','minusOneOverlay','ippoOverlay','freeAddOverlay','freeEditOverlay',
+       'subtractEditOverlay','prescEditOverlay','ointEditOverlay','powderEditOverlay',
+       'settingsOverlay','confirmResetOverlay','memoOverlay','historyOverlay'].forEach(closeOverlay);
+      closeTooltip(); return;
+    }
+    if (e.key === 'Enter') {
+      const pairs = [
+        ['manualInputOverlay', confirmManualInput],
+        ['minusOneOverlay',    confirmMinusOneEdit],
+        ['ippoOverlay',        confirmIppo],
+        ['freeAddOverlay',     confirmFreeAdd],
+        ['freeEditOverlay',    confirmFreeEdit],
+        ['subtractEditOverlay',confirmSubtractEdit],
+        ['prescEditOverlay',   confirmPrescEdit],
+        ['ointEditOverlay',    confirmOintEdit],
+        ['powderEditOverlay',  confirmPowderEdit],
+        ['settingsOverlay',    saveSettings],
+      ];
+      for (const [id, fn] of pairs) {
+        if (document.getElementById(id).classList.contains('open')) { fn(); return; }
+      }
+    }
+  });
+
+  const unlock = () => {
+    if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  };
+  document.addEventListener('touchstart', unlock, { passive: true, once: true });
+  document.addEventListener('click',      unlock, { once: true });
+}
+
+// ============================================================
+//  処方ボタン（長押し + タップ）
+// ============================================================
+function setupPrescButtons() {
+  document.querySelectorAll('.presc-btn').forEach(btn => {
+    const pharmCount = parseInt(btn.dataset.pharm);
+    const type       = btn.dataset.type;
+    makeLongPress(btn,
+      () => addPrescTime(pharmCount, type, btn),
+      () => openPrescEditModal(pharmCount, type)
+    );
+  });
+}
+
+// ============================================================
+//  START
+// ============================================================
+init();
+</script>
+</body>
+</html>
