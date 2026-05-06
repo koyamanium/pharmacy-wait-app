@@ -6,56 +6,26 @@
   <title>待ち時間計算アプリ</title>
   <style>
     *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+      box-sizing: border-box; margin: 0; padding: 0;
       -webkit-tap-highlight-color: transparent;
     }
     :root {
-      --clr-bg: #f4f5f7;
-      --clr-card: #ffffff;
-      --clr-primary: #4a7fa5;
-      --clr-primary-light: #deeaf4;
-      --clr-text: #2c3e50;
-      --clr-sub: #7f8c8d;
-      --clr-border: #e0e4e8;
-      --clr-orange: #c87941;
-      --clr-red: #c94a4a;
-      --radius: 12px;
-      --shadow: 0 2px 10px rgba(0,0,0,0.07);
+      --clr-bg: #f4f5f7; --clr-card: #ffffff;
+      --clr-primary: #4a7fa5; --clr-primary-light: #deeaf4;
+      --clr-text: #2c3e50; --clr-sub: #7f8c8d;
+      --clr-border: #e0e4e8; --clr-orange: #c87941; --clr-red: #c94a4a;
+      --radius: 12px; --shadow: 0 2px 10px rgba(0,0,0,0.07);
       --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
-      --dyn-color: #4a7fa5;
-      --dyn-bg: #deeaf4;
+      --dyn-color: #4a7fa5; --dyn-bg: #deeaf4;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
-      background: var(--clr-bg);
-      color: var(--clr-text);
+      background: var(--clr-bg); color: var(--clr-text);
       min-height: 100vh;
+      padding-top: max(12px, env(safe-area-inset-top, 12px));
       padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
       -webkit-text-size-adjust: 100%;
     }
-
-    /* ===== HEADER ===== */
-    .app-header {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: var(--clr-bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px 16px 8px;
-      padding-top: max(12px, env(safe-area-inset-top, 12px));
-    }
-    .app-title { font-size: 17px; font-weight: 700; letter-spacing: 0.06em; }
-    .header-gear {
-      position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; font-size: 22px; cursor: pointer;
-      color: var(--clr-sub); padding: 8px; border-radius: 50%;
-      transition: background 0.15s; line-height: 1;
-    }
-    .header-gear:active { background: var(--clr-border); }
 
     /* ===== MAIN ===== */
     .main { padding: 0 12px 12px; max-width: 640px; margin: 0 auto; }
@@ -63,43 +33,48 @@
     /* ===== WAIT CARD ===== */
     .wait-card {
       background: var(--clr-card); border-radius: var(--radius); box-shadow: var(--shadow);
-      padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center;
-      min-height: 92px; border-left: 4px solid var(--dyn-color);
-      transition: border-left-color 0.6s ease;
+      padding: 16px 18px 14px; margin-bottom: 10px;
+      border-left: 4px solid var(--dyn-color); transition: border-left-color 0.6s ease;
     }
+    .wait-card-top { display: flex; align-items: flex-start; gap: 8px; }
     .wait-card-left { flex: 1; }
-    .wait-card-label { font-size: 12px; color: var(--clr-sub); margin-bottom: 1px; display: flex; align-items: center; gap: 4px; }
-    .wait-time-row { display: flex; align-items: baseline; gap: 2px; cursor: pointer; user-select: none; -webkit-user-select: none; }
+    .wait-card-label { font-size: 12px; color: var(--clr-sub); margin-bottom: 2px; display: flex; align-items: center; gap: 4px; }
+    .wait-time-row { display: flex; align-items: baseline; gap: 4px; user-select: none; -webkit-user-select: none; }
     .wait-time-num {
-      font-size: 60px; font-weight: 800; line-height: 1;
+      font-size: 72px; font-weight: 800; line-height: 1;
       color: var(--dyn-color); transition: color 0.6s ease; font-variant-numeric: tabular-nums;
     }
-    .wait-time-unit { font-size: 18px; font-weight: 600; color: var(--dyn-color); transition: color 0.6s ease; margin-left: 2px; }
+    .wait-time-unit { font-size: 22px; font-weight: 600; color: var(--dyn-color); transition: color 0.6s ease; }
+    .wait-secs-wrap { display: flex; align-items: baseline; gap: 2px; }
+    .wait-secs-num { font-size: 32px; font-weight: 700; color: var(--dyn-color); transition: color 0.6s ease; font-variant-numeric: tabular-nums; }
+    .wait-secs-unit { font-size: 14px; font-weight: 500; color: var(--dyn-color); transition: color 0.6s ease; }
+    .wait-card-divider { width: 1px; height: 64px; background: var(--clr-border); margin: 0 14px; flex-shrink: 0; align-self: center; }
+    .wait-card-right { text-align: right; flex-shrink: 0; }
+    .pharm-right-label { font-size: 12px; color: var(--clr-sub); margin-bottom: 2px; }
+    .pharm-right-count { font-size: 30px; font-weight: 700; color: var(--clr-primary); }
+    .pharm-right-count .unit { font-size: 16px; font-weight: 500; }
+
+    /* wait card bottom row */
+    .wait-card-bottom { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     .wait-status-badge {
-      display: inline-block; margin-top: 5px; padding: 2px 14px; border-radius: 20px;
+      display: inline-block; padding: 3px 14px; border-radius: 20px;
       font-size: 12px; font-weight: 600;
       background: var(--dyn-bg); color: var(--dyn-color);
-      transition: background 0.6s ease, color 0.6s ease;
+      transition: background 0.6s ease, color 0.6s ease; flex-shrink: 0;
     }
-    .wait-card-divider { width: 1px; height: 56px; background: var(--clr-border); margin: 0 16px; flex-shrink: 0; }
-    .wait-card-right { min-width: 110px; text-align: right; }
-    .pharm-right-label { font-size: 12px; color: var(--clr-sub); margin-bottom: 2px; }
-    .pharm-right-count { font-size: 28px; font-weight: 700; color: var(--clr-primary); }
-    .pharm-right-count .unit { font-size: 16px; font-weight: 500; }
-    .pharm-right-minus { font-size: 11px; color: var(--clr-sub); margin-top: 2px; line-height: 1.4; }
-
-    /* ===== ACTION ROW ===== */
-    .action-row { display: flex; gap: 8px; margin-bottom: 10px; }
-    .action-btn {
-      flex: 1; padding: 10px 4px; border: 1.5px solid var(--clr-border);
-      border-radius: 10px; background: var(--clr-card); font-size: 12px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center;
-      justify-content: center; gap: 4px; color: var(--clr-text);
-      box-shadow: var(--shadow-sm); white-space: nowrap; font-family: inherit;
-      -webkit-appearance: none; touch-action: manipulation;
+    .minus-one-info {
+      font-size: 12px; color: var(--clr-sub); cursor: pointer;
+      text-decoration: underline dotted; text-underline-offset: 2px;
+      user-select: none; -webkit-user-select: none; margin-left: auto;
     }
-    .action-btn:active { transform: scale(0.96); box-shadow: none; }
-    .action-btn.sound-active { border-color: var(--clr-primary); color: var(--clr-primary); }
+    .subtract-inline-btn {
+      margin-left: 8px; padding: 8px 18px; border: 1.5px solid var(--clr-border);
+      border-radius: 20px; background: var(--clr-card); font-size: 15px; font-weight: 700;
+      cursor: pointer; color: var(--clr-text); font-family: inherit;
+      -webkit-appearance: none; touch-action: manipulation; transition: all 0.15s;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .subtract-inline-btn:active { transform: scale(0.96); background: var(--clr-bg); }
 
     /* ===== MAIN GRID ===== */
     .main-grid { display: grid; grid-template-columns: 130px 1fr; gap: 10px; margin-bottom: 10px; }
@@ -110,8 +85,8 @@
     .help-icon {
       display: inline-flex; width: 15px; height: 15px; border-radius: 50%;
       border: 1.5px solid var(--clr-sub); font-size: 9px; align-items: center;
-      justify-content: center; cursor: pointer; color: var(--clr-sub); flex-shrink: 0; font-weight: 700; line-height: 1;
-      touch-action: manipulation;
+      justify-content: center; cursor: pointer; color: var(--clr-sub); flex-shrink: 0;
+      font-weight: 700; line-height: 1; touch-action: manipulation;
     }
 
     /* ===== PHARMACIST BUTTONS ===== */
@@ -161,8 +136,6 @@
     .presc-btn .unit { font-size: 10px; font-weight: 400; }
     .presc-btn.active-row { background: var(--clr-primary); color: white; border-color: var(--clr-primary); box-shadow: 0 3px 10px rgba(74,127,165,0.3); }
     .presc-btn:active { transform: scale(0.96) !important; box-shadow: none !important; }
-    /* Long-press visual hint */
-    .presc-btn-hint { font-size: 8px; display: block; opacity: 0.6; margin-top: 1px; font-weight: 400; }
 
     /* ===== BOTTOM PANELS ===== */
     .bottom-panels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
@@ -177,6 +150,7 @@
       background: var(--clr-card); font-size: 9.5px; cursor: pointer; transition: all 0.15s ease;
       text-align: center; line-height: 1.4; color: var(--clr-text); font-family: inherit;
       -webkit-appearance: none; touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
     }
     .sub-btn:active { transform: scale(0.96); }
     .sub-btn-time { display: block; font-size: 13px; font-weight: 700; color: var(--clr-primary); }
@@ -186,6 +160,7 @@
       background: var(--clr-card); font-size: 9.5px; cursor: pointer; transition: all 0.15s ease;
       text-align: center; line-height: 1.4; color: var(--clr-text); font-family: inherit;
       -webkit-appearance: none; touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
     }
     .ippo-btn:active { transform: scale(0.96); }
     .ippo-btn-time { display: block; font-size: 11px; font-weight: 700; color: var(--clr-primary); }
@@ -199,6 +174,7 @@
       background: var(--clr-card); font-size: 13px; font-weight: 600; cursor: pointer;
       transition: all 0.15s ease; color: var(--clr-text); font-family: inherit;
       -webkit-appearance: none; touch-action: manipulation;
+      user-select: none; -webkit-user-select: none;
     }
     .free-btn:active { transform: scale(0.96); background: var(--clr-primary-light); border-color: var(--clr-primary); }
     .free-btn-add {
@@ -233,7 +209,8 @@
     .modal {
       background: var(--clr-card); border-radius: 16px; padding: 24px 20px 20px;
       width: 100%; max-width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-      animation: modal-in 0.2s ease;
+      animation: modal-in 0.2s ease; max-height: 90vh; overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     @keyframes modal-in {
       from { transform: scale(0.92); opacity: 0; }
@@ -249,6 +226,7 @@
     }
     .modal-input:focus { border-color: var(--clr-primary); }
     .modal-input.text-mode { font-size: 15px; font-weight: 500; text-align: left; padding: 12px 14px; }
+    .modal-input.sm { font-size: 18px; }
     .modal-hint { font-size: 11px; color: #aaa; text-align: center; margin-top: -10px; margin-bottom: 14px; }
     .modal-btns { display: flex; gap: 8px; }
     .modal-cancel {
@@ -285,14 +263,72 @@
     }
     .danger-btn:active { background: #fdecea; }
 
-    /* Log list */
-    .modal-list { max-height: 340px; overflow-y: auto; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
-    .log-item { padding: 9px 0; border-bottom: 1px solid var(--clr-border); font-size: 13px; }
-    .log-item:last-child { border-bottom: none; }
-    .log-action { font-weight: 600; color: var(--clr-text); }
-    .log-result { color: var(--clr-primary); font-weight: 700; }
-    .log-time { font-size: 10px; color: var(--clr-sub); margin-top: 2px; }
-    .log-empty { text-align: center; color: var(--clr-sub); padding: 24px 0; font-size: 13px; }
+    /* Sound toggle in settings */
+    .sound-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+    .sound-toggle-label { font-size: 14px; color: var(--clr-text); font-weight: 500; }
+    .toggle-switch {
+      position: relative; width: 48px; height: 28px; cursor: pointer;
+      -webkit-appearance: none; appearance: none; background: #ccc;
+      border-radius: 14px; transition: background 0.2s; outline: none;
+      flex-shrink: 0;
+    }
+    .toggle-switch:checked { background: var(--clr-primary); }
+    .toggle-switch::before {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 22px; height: 22px; border-radius: 50%; background: white;
+      transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .toggle-switch:checked::before { transform: translateX(20px); }
+
+    /* Pharmacist count settings */
+    .pharm-count-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .pharm-count-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 50%; background: var(--clr-primary);
+      color: white; font-weight: 700; font-size: 15px; flex-shrink: 0;
+    }
+    .pharm-count-label { font-size: 13px; color: var(--clr-text); flex: 1; }
+    .pharm-count-del {
+      padding: 4px 10px; border: 1px solid #e57373; border-radius: 8px;
+      background: transparent; color: var(--clr-red); font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit; touch-action: manipulation;
+    }
+    .pharm-count-del:active { background: #fdecea; }
+    .pharm-count-add {
+      width: 100%; padding: 10px; border: 1.5px dashed var(--clr-primary); border-radius: 10px;
+      background: transparent; color: var(--clr-primary); font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; touch-action: manipulation; transition: background 0.15s;
+    }
+    .pharm-count-add:active { background: var(--clr-primary-light); }
+
+    /* Memo list */
+    .modal-list { max-height: 300px; overflow-y: auto; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
+    .memo-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 0; border-bottom: 1px solid var(--clr-border);
+    }
+    .memo-item:last-child { border-bottom: none; }
+    .memo-text { flex: 1; font-size: 14px; color: var(--clr-text); line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+    .memo-time { font-size: 10px; color: var(--clr-sub); flex-shrink: 0; }
+    .memo-del {
+      background: none; border: none; font-size: 16px; color: #ccc; cursor: pointer;
+      padding: 0 2px; flex-shrink: 0; touch-action: manipulation; line-height: 1;
+    }
+    .memo-del:active { color: var(--clr-red); }
+    .memo-empty { text-align: center; color: var(--clr-sub); padding: 24px 0; font-size: 13px; }
+    .memo-add-area { display: flex; gap: 8px; align-items: flex-end; }
+    .memo-textarea {
+      flex: 1; padding: 10px 12px; border: 1.5px solid var(--clr-border); border-radius: 10px;
+      font-size: 14px; outline: none; color: var(--clr-text); font-family: inherit;
+      resize: none; min-height: 52px; transition: border-color 0.15s; -webkit-appearance: none;
+    }
+    .memo-textarea:focus { border-color: var(--clr-primary); }
+    .memo-add-btn {
+      padding: 10px 14px; border: none; border-radius: 10px; background: var(--clr-primary);
+      color: white; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+      touch-action: manipulation; white-space: nowrap; align-self: flex-end;
+    }
+    .memo-add-btn:active { opacity: 0.85; }
 
     /* Tooltip */
     .tooltip-overlay { display: none; position: fixed; inset: 0; z-index: 300; align-items: center; justify-content: center; padding: 20px; }
@@ -306,16 +342,26 @@
     /* Bounce */
     @keyframes btn-bounce {
       0%   { transform: scale(0.96); }
-      60%  { transform: scale(1.03); }
+      60%  { transform: scale(1.06); }
       100% { transform: scale(1);    }
     }
-    .btn-bounce { animation: btn-bounce 0.28s cubic-bezier(0.34,1.56,0.64,1) !important; }
+    .btn-bounce { animation: btn-bounce 0.3s cubic-bezier(0.34,1.56,0.64,1) !important; }
+
+    /* Sub-panel edit modal row */
+    .sub-edit-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+    .sub-edit-row label { font-size: 12px; color: var(--clr-sub); width: 90px; flex-shrink: 0; }
+    .sub-edit-row input {
+      flex: 1; padding: 8px 10px; border: 1.5px solid var(--clr-border); border-radius: 8px;
+      font-size: 16px; font-weight: 700; text-align: center; outline: none;
+      color: var(--clr-text); font-family: inherit; -webkit-appearance: none;
+    }
+    .sub-edit-row input:focus { border-color: var(--clr-primary); }
 
     /* iPad */
     @media (min-width: 768px) {
       .main { padding: 0 20px 12px; max-width: 720px; }
       .main-grid { grid-template-columns: 155px 1fr; }
-      .wait-time-num { font-size: 70px; }
+      .wait-time-num { font-size: 80px; }
       .presc-btn { padding: 14px 4px; font-size: 17px; }
       .sub-btn { font-size: 11px; }
       .ippo-btn { font-size: 11px; }
@@ -324,40 +370,33 @@
 </head>
 <body>
 
-<!-- ===== HEADER ===== -->
-<header class="app-header">
-  <h1 class="app-title">待ち時間計算アプリ</h1>
-  <button class="header-gear" onclick="openSettings()" aria-label="設定">⚙️</button>
-</header>
-
-<!-- ===== MAIN ===== -->
 <main class="main">
 
   <!-- Wait Time Card -->
   <div class="wait-card" id="waitCard">
-    <div class="wait-card-left">
-      <div class="wait-card-label"><span>🕐</span><span>現在の待ち時間</span></div>
-      <div class="wait-time-row" id="waitTimeRow" title="タップして手入力">
-        <span class="wait-time-num" id="waitTimeNum">0</span>
-        <span class="wait-time-unit">分</span>
+    <div class="wait-card-top">
+      <div class="wait-card-left">
+        <div class="wait-card-label"><span>🕐</span><span>現在の待ち時間</span></div>
+        <div class="wait-time-row">
+          <span class="wait-time-num" id="waitTimeNum">0</span>
+          <span class="wait-time-unit">分</span>
+          <div class="wait-secs-wrap" id="secsWrap" style="margin-left:6px;">
+            <span class="wait-secs-num" id="waitSecsNum">00</span>
+            <span class="wait-secs-unit">秒</span>
+          </div>
+        </div>
       </div>
+      <div class="wait-card-divider"></div>
+      <div class="wait-card-right">
+        <div class="pharm-right-label">薬剤師</div>
+        <div class="pharm-right-count"><span id="effectiveCountDisplay">3</span><span class="unit">人</span></div>
+      </div>
+    </div>
+    <div class="wait-card-bottom">
       <span class="wait-status-badge" id="statusBadge">通常</span>
+      <button class="subtract-inline-btn" id="subtractBtn">－ <span id="subtractLabel">5</span>分</button>
+      <span class="minus-one-info" id="minusInfoDisplay" style="display:none;"></span>
     </div>
-    <div class="wait-card-divider"></div>
-    <div class="wait-card-right">
-      <div class="pharm-right-label">現在の薬剤師人数</div>
-      <div class="pharm-right-count"><span id="effectiveCountDisplay">3</span><span class="unit">人</span></div>
-      <div class="pharm-right-minus" id="minusInfoDisplay"></div>
-    </div>
-  </div>
-
-  <!-- Action Row -->
-  <div class="action-row">
-    <button class="action-btn" id="manualInputBtn">＋ 手入力</button>
-    <button class="action-btn" id="subtractBtn">－ <span id="subtractLabel">5</span>分戻す</button>
-    <button class="action-btn sound-active" id="soundToggleBtn">
-      <span id="soundIcon">🔊</span> 音：<span id="soundLabel">ON</span>
-    </button>
   </div>
 
   <!-- Main Grid -->
@@ -369,11 +408,7 @@
         薬剤師人数
         <span class="help-icon" id="pharmHelp">?</span>
       </div>
-      <div class="pharm-btn-group">
-        <button class="pharm-btn" data-count="3">3人</button>
-        <button class="pharm-btn" data-count="2">2人</button>
-        <button class="pharm-btn" data-count="1">1人</button>
-      </div>
+      <div class="pharm-btn-group" id="pharmBtnGroup"></div>
       <div class="mode-section">
         <div class="mode-label">切替モード</div>
         <div class="mode-row">
@@ -391,21 +426,11 @@
         <span class="help-icon" id="prescHelp">?</span>
       </div>
       <div class="presc-header-row">
-        <div class="presc-col-head">小<span class="presc-col-sub">（軽い処方）</span></div>
-        <div class="presc-col-head">中<span class="presc-col-sub">（標準的な処方）</span></div>
-        <div class="presc-col-head">大<span class="presc-col-sub">（重い処方）</span></div>
+        <div class="presc-col-head">小<span class="presc-col-sub">（軽い）</span></div>
+        <div class="presc-col-head">中<span class="presc-col-sub">（標準）</span></div>
+        <div class="presc-col-head">大<span class="presc-col-sub">（重い）</span></div>
       </div>
-      <div class="presc-grid" id="prescGrid">
-        <button class="presc-btn" data-pharm="3" data-type="small">4<span class="unit">分</span></button>
-        <button class="presc-btn" data-pharm="3" data-type="medium">7<span class="unit">分</span></button>
-        <button class="presc-btn" data-pharm="3" data-type="large">10<span class="unit">分</span></button>
-        <button class="presc-btn" data-pharm="2" data-type="small">6<span class="unit">分</span></button>
-        <button class="presc-btn" data-pharm="2" data-type="medium">9<span class="unit">分</span></button>
-        <button class="presc-btn" data-pharm="2" data-type="large">13<span class="unit">分</span></button>
-        <button class="presc-btn" data-pharm="1" data-type="small">8<span class="unit">分</span></button>
-        <button class="presc-btn" data-pharm="1" data-type="medium">14<span class="unit">分</span></button>
-        <button class="presc-btn" data-pharm="1" data-type="large">20<span class="unit">分</span></button>
-      </div>
+      <div class="presc-grid" id="prescGrid"></div>
     </div>
 
   </div>
@@ -417,8 +442,8 @@
     <div class="sub-panel">
       <div class="sub-panel-title">軟膏<span class="help-icon" id="ointHelp">?</span></div>
       <div class="sub-panel-btns">
-        <button class="sub-btn" id="ointPreBtn">予製あり<span class="sub-btn-time">2分</span></button>
-        <button class="sub-btn" id="ointNoBtn">予製なし<span class="sub-btn-time">5分</span></button>
+        <button class="sub-btn" id="ointPreBtn">予製あり<span class="sub-btn-time" id="ointPreTime">2分</span></button>
+        <button class="sub-btn" id="ointNoBtn">予製なし<span class="sub-btn-time" id="ointNoTime">5分</span></button>
       </div>
     </div>
 
@@ -426,8 +451,8 @@
     <div class="sub-panel">
       <div class="sub-panel-title">粉<span class="help-icon" id="powderHelp">?</span></div>
       <div class="sub-panel-btns">
-        <button class="sub-btn" id="powderPreBtn">ディメロあり<span class="sub-btn-time">3分</span></button>
-        <button class="sub-btn" id="powderNoBtn">ディメロなし<span class="sub-btn-time">6分</span></button>
+        <button class="sub-btn" id="powderPreBtn">ディメロあり<span class="sub-btn-time" id="powderPreTime">3分</span></button>
+        <button class="sub-btn" id="powderNoBtn">ディメロなし<span class="sub-btn-time" id="powderNoTime">6分</span></button>
       </div>
     </div>
 
@@ -444,7 +469,7 @@
   <!-- Free Add Section -->
   <div class="free-add-card">
     <div class="free-add-title">
-      その他の加算（自由加算ボタン）
+      その他の加算
       <span class="help-icon" id="freeHelp">?</span>
     </div>
     <div class="free-add-row" id="freeAddRow"></div>
@@ -454,14 +479,14 @@
 
 <!-- ===== BOTTOM NAV ===== -->
 <nav class="bottom-nav">
-  <button class="nav-item" id="navAnnotations"><span class="nav-icon">📋</span>注釈一覧</button>
+  <button class="nav-item" id="navMemo"><span class="nav-icon">📝</span>メモ</button>
   <button class="nav-item" id="navSettings"><span class="nav-icon">⚙️</span>設定</button>
   <button class="nav-item" id="navHistory"><span class="nav-icon">🕐</span>履歴</button>
 </nav>
 
 <!-- ===== MODALS ===== -->
 
-<!-- Manual Input -->
+<!-- 手入力（待ち時間） -->
 <div class="overlay" id="manualInputOverlay">
   <div class="modal">
     <div class="modal-title">待ち時間を手入力</div>
@@ -469,6 +494,19 @@
     <div class="modal-btns">
       <button class="modal-cancel" id="manualCancel">キャンセル</button>
       <button class="modal-confirm" id="manualConfirm">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- -1残り時間 手入力 -->
+<div class="overlay" id="minusOneOverlay">
+  <div class="modal">
+    <div class="modal-title">-1 残り時間を編集</div>
+    <div class="modal-sublabel">残り時間（分）</div>
+    <input class="modal-input" type="number" id="minusOneField" min="0" max="999" placeholder="分" inputmode="numeric">
+    <div class="modal-btns">
+      <button class="modal-cancel" id="minusOneCancel">キャンセル</button>
+      <button class="modal-confirm" id="minusOneConfirm">確定</button>
     </div>
   </div>
 </div>
@@ -485,7 +523,65 @@
   </div>
 </div>
 
-<!-- Free Add -->
+<!-- Presc Edit（長押し） -->
+<div class="overlay" id="prescEditOverlay">
+  <div class="modal">
+    <div class="modal-title" id="prescEditTitle">ボタンを編集</div>
+    <div class="modal-sublabel">加算時間（分）</div>
+    <input class="modal-input" type="number" id="prescEditMinutes" min="1" max="120" inputmode="numeric">
+    <div class="modal-hint" id="prescEditHint"></div>
+    <div class="modal-sublabel">注釈テキスト</div>
+    <input class="modal-input text-mode" type="text" id="prescEditAnnotation" maxlength="30" placeholder="例：通常処方">
+    <div class="modal-btns">
+      <button class="modal-cancel" id="prescEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="prescEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 軟膏 編集（長押し） -->
+<div class="overlay" id="ointEditOverlay">
+  <div class="modal">
+    <div class="modal-title">軟膏 時間を編集</div>
+    <div class="sub-edit-row"><label>予製あり（分）</label><input type="number" id="ointPreEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="sub-edit-row"><label>予製なし（分）</label><input type="number" id="ointNoEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="sub-edit-row"><label>予製なし -1時間</label><input type="number" id="ointNoMinusEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="ointEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="ointEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 粉 編集（長押し） -->
+<div class="overlay" id="powderEditOverlay">
+  <div class="modal">
+    <div class="modal-title">粉 時間を編集</div>
+    <div class="sub-edit-row"><label>ディメロあり（分）</label><input type="number" id="powderPreEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="sub-edit-row"><label>ディメロなし（分）</label><input type="number" id="powderNoEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="sub-edit-row"><label>ディメロなし -1時間</label><input type="number" id="powderNoMinusEdit" min="1" max="120" inputmode="numeric"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="powderEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="powderEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自由加算 編集（長押し） -->
+<div class="overlay" id="freeEditOverlay">
+  <div class="modal">
+    <div class="modal-title">加算ボタンを編集</div>
+    <div class="modal-sublabel">時間（分）</div>
+    <input class="modal-input" type="number" id="freeEditField" min="1" max="999" inputmode="numeric">
+    <div class="modal-btns">
+      <button class="modal-cancel" id="freeEditDelete" style="background:#fdecea;color:var(--clr-red);">削除</button>
+      <button class="modal-cancel" id="freeEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="freeEditConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自由加算 追加 -->
 <div class="overlay" id="freeAddOverlay">
   <div class="modal">
     <div class="modal-title">加算ボタンを追加</div>
@@ -497,18 +593,15 @@
   </div>
 </div>
 
-<!-- Presc Edit (long press) -->
-<div class="overlay" id="prescEditOverlay">
+<!-- -5分 編集（長押し） -->
+<div class="overlay" id="subtractEditOverlay">
   <div class="modal">
-    <div class="modal-title" id="prescEditTitle">ボタンを編集</div>
-    <div class="modal-sublabel">加算時間（分）</div>
-    <input class="modal-input" type="number" id="prescEditMinutes" min="1" max="120" inputmode="numeric">
-    <div class="modal-hint" id="prescEditHint"></div>
-    <div class="modal-sublabel">注釈テキスト（ログに表示）</div>
-    <input class="modal-input text-mode" type="text" id="prescEditAnnotation" maxlength="30" placeholder="例：通常処方">
+    <div class="modal-title">減算時間を編集</div>
+    <div class="modal-sublabel">減算する時間（分）</div>
+    <input class="modal-input" type="number" id="subtractEditField" min="1" max="60" inputmode="numeric">
     <div class="modal-btns">
-      <button class="modal-cancel" id="prescEditCancel">キャンセル</button>
-      <button class="modal-confirm" id="prescEditConfirm">保存</button>
+      <button class="modal-cancel" id="subtractEditCancel">キャンセル</button>
+      <button class="modal-confirm" id="subtractEditConfirm">保存</button>
     </div>
   </div>
 </div>
@@ -518,18 +611,23 @@
   <div class="modal" style="max-width:380px;">
     <div class="modal-title">⚙️ 設定</div>
     <div class="settings-section">
-      <div class="settings-label">減算ボタンの時間</div>
-      <div class="settings-row">
-        <input class="settings-input" type="number" id="subtractMinSetting" min="1" max="60" inputmode="numeric">
-        <span class="settings-unit">分戻す</span>
-      </div>
-    </div>
-    <div class="settings-section">
       <div class="settings-label">音通知の閾値</div>
       <div class="settings-row">
         <input class="settings-input" type="number" id="soundThresholdSetting" min="1" max="120" inputmode="numeric">
         <span class="settings-unit">分以上で通知</span>
       </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">音通知</div>
+      <div class="sound-toggle-row">
+        <span class="sound-toggle-label">🔊 音：ON / OFF</span>
+        <input type="checkbox" class="toggle-switch" id="soundToggleCheck">
+      </div>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-section">
+      <div class="settings-label">薬剤師人数の段階</div>
+      <div id="pharmCountSettings"></div>
     </div>
     <div class="settings-divider"></div>
     <div class="settings-section">
@@ -554,14 +652,17 @@
   </div>
 </div>
 
-<!-- Annotations -->
-<div class="overlay" id="annotationsOverlay">
+<!-- メモ -->
+<div class="overlay" id="memoOverlay">
   <div class="modal" style="max-width:400px;">
-    <div class="modal-title">📋 注釈一覧（操作ログ）</div>
-    <div class="modal-list" id="annotationList"></div>
+    <div class="modal-title">📝 メモ</div>
+    <div class="modal-list" id="memoList"></div>
+    <div class="memo-add-area" style="margin-bottom:14px;">
+      <textarea class="memo-textarea" id="memoTextarea" placeholder="メモを入力..." rows="2"></textarea>
+      <button class="memo-add-btn" id="memoAddBtn">追加</button>
+    </div>
     <div class="modal-btns">
-      <button class="modal-cancel" id="clearLogBtn">ログ消去</button>
-      <button class="modal-confirm" id="annotationsClose">閉じる</button>
+      <button class="modal-confirm" id="memoClose">閉じる</button>
     </div>
   </div>
 </div>
@@ -572,6 +673,7 @@
     <div class="modal-title">🕐 履歴</div>
     <div class="modal-list" id="historyList"></div>
     <div class="modal-btns">
+      <button class="modal-cancel" id="clearLogBtn">ログ消去</button>
       <button class="modal-confirm" id="historyClose">閉じる</button>
     </div>
   </div>
@@ -584,7 +686,7 @@
 
 <script>
 // ============================================================
-//  CONSTANTS (デフォルト値)
+//  CONSTANTS
 // ============================================================
 const DEFAULT_TIME_TABLE = {
   3: { small: 4,  medium: 7,  large: 10 },
@@ -608,27 +710,38 @@ let state = {
   soundEnabled: true,
   subtractMinutes: 5,
   soundThreshold: 15,
+  maxPharmacistCount: 3,
+  ointPremadeWait: 2,
+  ointNoPremadeWait: 5,
+  ointNoPremadeMinus: 5,
+  powderDimeloWait: 3,
+  powderNoDimeloWait: 6,
+  powderNoDimeloMinus: 6,
   freeAddValues: [2, 5, 10, 15, 20, 30],
-  customTimeTable: {},    // key: '3_small' → number
-  customAnnotations: {},  // key: '3_small' → string
+  customTimeTable: {},
+  customAnnotations: {},
+  memos: [],
   actionLog: []
 };
 
 let audioCtx = null;
+let lastSoundMinute = -1; // 同じ分に2回鳴らさないように
 
 // ============================================================
-//  HELPERS: カスタム値取得
+//  HELPERS
 // ============================================================
 function getTimeValue(pharmCount, type) {
   const key = `${pharmCount}_${type}`;
   return (state.customTimeTable[key] != null)
     ? state.customTimeTable[key]
-    : DEFAULT_TIME_TABLE[pharmCount][type];
+    : (DEFAULT_TIME_TABLE[pharmCount] ? DEFAULT_TIME_TABLE[pharmCount][type] : DEFAULT_TIME_TABLE[1][type]);
 }
-
 function getAnnotationText(pharmCount, type) {
   const key = `${pharmCount}_${type}`;
   return state.customAnnotations[key] || `処方（${pharmCount}人/${TYPE_LABEL[type]}）`;
+}
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ============================================================
@@ -637,28 +750,37 @@ function getAnnotationText(pharmCount, type) {
 function init() {
   loadState();
   catchUpTime();
+  buildPrescGrid();
+  buildPharmButtons();
   setupAllButtons();
-  renderAll();
+  renderAll(59);
   setInterval(tick, 1000);
 }
 
 function loadState() {
   try {
-    const saved = localStorage.getItem('pharmacyWait_v3');
+    const saved = localStorage.getItem('pharmacyWait_v4');
     if (saved) {
       const parsed = JSON.parse(saved);
       Object.assign(state, parsed);
-      // 必須フィールドの補完
       if (!state.customTimeTable)  state.customTimeTable  = {};
       if (!state.customAnnotations) state.customAnnotations = {};
       if (!state.actionLog)        state.actionLog        = [];
       if (!state.freeAddValues)    state.freeAddValues    = [2,5,10,15,20,30];
+      if (!state.memos)            state.memos            = [];
+      if (state.maxPharmacistCount == null) state.maxPharmacistCount = 3;
+      if (state.ointPremadeWait   == null) state.ointPremadeWait   = 2;
+      if (state.ointNoPremadeWait == null) state.ointNoPremadeWait = 5;
+      if (state.ointNoPremadeMinus== null) state.ointNoPremadeMinus= 5;
+      if (state.powderDimeloWait  == null) state.powderDimeloWait  = 3;
+      if (state.powderNoDimeloWait== null) state.powderNoDimeloWait= 6;
+      if (state.powderNoDimeloMinus==null) state.powderNoDimeloMinus=6;
     }
   } catch(e) {}
 }
 
 function saveState() {
-  try { localStorage.setItem('pharmacyWait_v3', JSON.stringify(state)); } catch(e) {}
+  try { localStorage.setItem('pharmacyWait_v4', JSON.stringify(state)); } catch(e) {}
 }
 
 function catchUpTime() {
@@ -673,20 +795,75 @@ function catchUpTime() {
 }
 
 // ============================================================
-//  TIMER
+//  TIMER（1秒ごと）
 // ============================================================
 function tick() {
-  const now  = Date.now();
-  const mins = Math.floor((now - state.lastUpdateTimestamp) / 60000);
+  const now     = Date.now();
+  const elapsed = now - state.lastUpdateTimestamp;
+  const mins    = Math.floor(elapsed / 60000);
+  const secsElapsed = Math.floor((elapsed % 60000) / 1000);
+  const secsDisplay = 59 - secsElapsed; // 59→0のカウントダウン
+
   if (mins > 0) {
-    const prev = state.waitTime;
     state.waitTime              = Math.max(0, state.waitTime - mins);
     state.minusOneRemainingTime = Math.max(0, state.minusOneRemainingTime - mins);
     state.lastUpdateTimestamp  += mins * 60000;
-    checkSoundBoundary(prev, state.waitTime);
     saveState();
   }
-  renderAll();
+
+  // 音B: ちょうどX分00秒のとき（secsDisplay===0のフレームで一度だけ）
+  if (secsDisplay === 0 && state.waitTime > 0 && state.soundEnabled) {
+    const thr = state.soundThreshold || 15;
+    if (state.waitTime >= thr && state.waitTime % 5 === 0) {
+      if (state.waitTime !== lastSoundMinute) {
+        lastSoundMinute = state.waitTime;
+        playSoundB();
+      }
+    }
+  }
+
+  renderAll(secsDisplay);
+}
+
+// ============================================================
+//  BUILD DOM（薬剤師ボタン・処方グリッド）
+// ============================================================
+function buildPharmButtons() {
+  const group = document.getElementById('pharmBtnGroup');
+  group.innerHTML = '';
+  const max = state.maxPharmacistCount || 3;
+  for (let n = max; n >= 1; n--) {
+    const btn = document.createElement('button');
+    btn.className = 'pharm-btn';
+    btn.dataset.count = n;
+    btn.textContent = `${n}人`;
+    btn.addEventListener('click', () => setBase(n));
+    group.appendChild(btn);
+  }
+}
+
+function buildPrescGrid() {
+  const grid = document.getElementById('prescGrid');
+  grid.innerHTML = '';
+  const max = state.maxPharmacistCount || 3;
+  ['small','medium','large'].forEach(type => {
+    for (let n = max; n >= 1; n--) {
+      // ダミー — renderPrescGrid で更新
+    }
+  });
+  // 行 × 列の順で追加（行=人数、列=サイズ）
+  for (let n = max; n >= 1; n--) {
+    ['small','medium','large'].forEach(type => {
+      const btn = document.createElement('button');
+      btn.className = 'presc-btn';
+      btn.dataset.pharm = n;
+      btn.dataset.type  = type;
+      const mins = getTimeValue(n, type);
+      btn.innerHTML = `${mins}<span class="unit">分</span>`;
+      grid.appendChild(btn);
+    });
+  }
+  setupPrescButtons();
 }
 
 // ============================================================
@@ -700,27 +877,37 @@ function getEffective() {
 // ============================================================
 //  RENDER
 // ============================================================
-function renderAll() {
-  renderWaitCard();
+function renderAll(secs) {
+  renderWaitCard(secs);
   renderPharmButtons();
   renderPrescGrid();
   renderFreeAdd();
+  renderSubPanelTimes();
 }
 
-function renderWaitCard() {
+function renderWaitCard(secs) {
   const wt  = state.waitTime;
-  const eff = getEffective();
   const c   = wt >= 40 ? COLOR_DANGER : wt >= 30 ? COLOR_WARNING : COLOR_NORMAL;
+  const eff = getEffective();
 
-  document.getElementById('waitTimeNum').textContent         = wt;
+  document.getElementById('waitTimeNum').textContent           = wt;
   document.getElementById('effectiveCountDisplay').textContent = eff;
-  document.getElementById('statusBadge').textContent         = c.badge;
+  document.getElementById('statusBadge').textContent           = c.badge;
   document.documentElement.style.setProperty('--dyn-color', c.color);
   document.documentElement.style.setProperty('--dyn-bg',    c.bg);
 
-  const minusDiv = document.getElementById('minusInfoDisplay');
-  minusDiv.textContent = (state.minusOneRemainingTime > 0 && state.mode === 'auto')
-    ? `(-1：残り${state.minusOneRemainingTime}分)` : '';
+  // 秒表示
+  const secsStr = (secs != null) ? String(secs).padStart(2, '0') : '00';
+  document.getElementById('waitSecsNum').textContent = secsStr;
+
+  // -1 情報
+  const minusEl = document.getElementById('minusInfoDisplay');
+  if (state.minusOneRemainingTime > 0 && state.mode === 'auto') {
+    minusEl.textContent = `-1：残り${state.minusOneRemainingTime}分`;
+    minusEl.style.display = '';
+  } else {
+    minusEl.style.display = 'none';
+  }
 
   document.getElementById('subtractLabel').textContent = state.subtractMinutes;
 }
@@ -748,11 +935,10 @@ function renderPharmButtons() {
 function renderPrescGrid() {
   const eff = getEffective();
   document.querySelectorAll('.presc-btn').forEach(btn => {
-    const pc = parseInt(btn.dataset.pharm);
-    const tp = btn.dataset.type;
-    btn.classList.toggle('active-row', pc === eff);
-    // カスタム値を表示に反映
+    const pc   = parseInt(btn.dataset.pharm);
+    const tp   = btn.dataset.type;
     const mins = getTimeValue(pc, tp);
+    btn.classList.toggle('active-row', pc === eff);
     btn.innerHTML = `${mins}<span class="unit">分</span>`;
   });
 }
@@ -760,11 +946,11 @@ function renderPrescGrid() {
 function renderFreeAdd() {
   const row = document.getElementById('freeAddRow');
   row.innerHTML = '';
-  state.freeAddValues.forEach(v => {
+  state.freeAddValues.forEach((v, idx) => {
     const btn = document.createElement('button');
     btn.className = 'free-btn';
     btn.textContent = `${v}分`;
-    btn.addEventListener('click', () => { addFreeTime(v); bounce(btn); });
+    setupFreeBtnEvents(btn, v, idx);
     row.appendChild(btn);
   });
   const addBtn = document.createElement('button');
@@ -774,12 +960,72 @@ function renderFreeAdd() {
   row.appendChild(addBtn);
 }
 
+function renderSubPanelTimes() {
+  document.getElementById('ointPreTime').textContent  = `${state.ointPremadeWait}分`;
+  document.getElementById('ointNoTime').textContent   = `${state.ointNoPremadeWait}分`;
+  document.getElementById('powderPreTime').textContent = `${state.powderDimeloWait}分`;
+  document.getElementById('powderNoTime').textContent  = `${state.powderNoDimeloWait}分`;
+}
+
+// ============================================================
+//  FREE BTN EVENTS（長押し対応）
+// ============================================================
+function setupFreeBtnEvents(btn, value, idx) {
+  let pressTimer = null, didLong = false, lastTouch = 0;
+  const start = () => { didLong = false; pressTimer = setTimeout(() => { didLong = true; openFreeEditModal(idx); }, 600); };
+  const cancel = () => { clearTimeout(pressTimer); pressTimer = null; };
+  btn.addEventListener('touchstart', start, { passive: true });
+  btn.addEventListener('touchmove',  cancel, { passive: true });
+  btn.addEventListener('touchend',   (e) => { cancel(); lastTouch = Date.now(); if (!didLong) { e.preventDefault(); addFreeTime(value); bounce(btn); } setTimeout(() => { didLong = false; }, 50); });
+  btn.addEventListener('touchcancel',() => { cancel(); didLong = false; });
+  btn.addEventListener('mousedown',  () => { if (Date.now() - lastTouch < 600) return; start(); });
+  btn.addEventListener('mouseup',    cancel);
+  btn.addEventListener('mouseleave', cancel);
+  btn.addEventListener('click',      (e) => { if (Date.now() - lastTouch < 600) return; if (didLong) { didLong = false; return; } addFreeTime(value); bounce(btn); });
+}
+
+// ============================================================
+//  SUB-BTN LONG PRESS（軟膏・粉）
+// ============================================================
+function setupSubBtnLongPress(btnId, openEditFn, tapFn) {
+  const btn = document.getElementById(btnId);
+  let pressTimer = null, didLong = false, lastTouch = 0;
+  const start = () => { didLong = false; pressTimer = setTimeout(() => { didLong = true; openEditFn(); }, 600); };
+  const cancel = () => { clearTimeout(pressTimer); pressTimer = null; };
+  btn.addEventListener('touchstart', start, { passive: true });
+  btn.addEventListener('touchmove',  cancel, { passive: true });
+  btn.addEventListener('touchend',   (e) => { cancel(); lastTouch = Date.now(); if (!didLong) { e.preventDefault(); tapFn(); bounce(btn); } setTimeout(() => { didLong = false; }, 50); });
+  btn.addEventListener('touchcancel',() => { cancel(); didLong = false; });
+  btn.addEventListener('mousedown',  () => { if (Date.now() - lastTouch < 600) return; start(); });
+  btn.addEventListener('mouseup',    cancel);
+  btn.addEventListener('mouseleave', cancel);
+  btn.addEventListener('click',      (e) => { if (Date.now() - lastTouch < 600) return; if (didLong) { didLong = false; return; } tapFn(); bounce(btn); });
+}
+
+// ============================================================
+//  SUBTRACT BTN LONG PRESS
+// ============================================================
+function setupSubtractBtnLongPress() {
+  const btn = document.getElementById('subtractBtn');
+  let pressTimer = null, didLong = false, lastTouch = 0;
+  const start = () => { didLong = false; pressTimer = setTimeout(() => { didLong = true; openSubtractEdit(); }, 600); };
+  const cancel = () => { clearTimeout(pressTimer); pressTimer = null; };
+  btn.addEventListener('touchstart', start, { passive: true });
+  btn.addEventListener('touchmove',  cancel, { passive: true });
+  btn.addEventListener('touchend',   (e) => { cancel(); lastTouch = Date.now(); if (!didLong) { e.preventDefault(); subtractTime(); bounce(btn); } setTimeout(() => { didLong = false; }, 50); });
+  btn.addEventListener('touchcancel',() => { cancel(); didLong = false; });
+  btn.addEventListener('mousedown',  () => { if (Date.now() - lastTouch < 600) return; start(); });
+  btn.addEventListener('mouseup',    cancel);
+  btn.addEventListener('mouseleave', cancel);
+  btn.addEventListener('click',      (e) => { if (Date.now() - lastTouch < 600) return; if (didLong) { didLong = false; return; } subtractTime(); bounce(btn); });
+}
+
 // ============================================================
 //  ACTIONS
 // ============================================================
 function addPrescTime(pharmCount, type, btn) {
-  const mins  = getTimeValue(pharmCount, type);
-  const prev  = state.waitTime;
+  const mins = getTimeValue(pharmCount, type);
+  const prev = state.waitTime;
   state.waitTime += mins;
   checkSoundBoundary(prev, state.waitTime);
   addLog(`${getAnnotationText(pharmCount, type)} +${mins}分`, mins, state.waitTime);
@@ -790,14 +1036,17 @@ function addPrescTime(pharmCount, type, btn) {
 function addOintment(hasPremade) {
   const prev = state.waitTime;
   if (hasPremade) {
-    state.waitTime += 2;
+    const w = state.ointPremadeWait;
+    state.waitTime += w;
     checkSoundBoundary(prev, state.waitTime);
-    addLog('軟膏（予製あり）+2分', 2, state.waitTime);
+    addLog(`軟膏（予製あり）+${w}分`, w, state.waitTime);
   } else {
-    state.waitTime += 5;
-    state.minusOneRemainingTime += 5;
+    const w = state.ointNoPremadeWait;
+    const m = state.ointNoPremadeMinus;
+    state.waitTime += w;
+    state.minusOneRemainingTime += m;
     checkSoundBoundary(prev, state.waitTime);
-    addLog('軟膏（予製なし）+5分 / -1×5分', 5, state.waitTime);
+    addLog(`軟膏（予製なし）+${w}分 / -1×${m}分`, w, state.waitTime);
   }
   saveState(); renderAll();
 }
@@ -805,14 +1054,17 @@ function addOintment(hasPremade) {
 function addPowder(hasDimelo) {
   const prev = state.waitTime;
   if (hasDimelo) {
-    state.waitTime += 3;
+    const w = state.powderDimeloWait;
+    state.waitTime += w;
     checkSoundBoundary(prev, state.waitTime);
-    addLog('粉（ディメロあり）+3分', 3, state.waitTime);
+    addLog(`粉（ディメロあり）+${w}分`, w, state.waitTime);
   } else {
-    state.waitTime += 6;
-    state.minusOneRemainingTime += 6;
+    const w = state.powderNoDimeloWait;
+    const m = state.powderNoDimeloMinus;
+    state.waitTime += w;
+    state.minusOneRemainingTime += m;
     checkSoundBoundary(prev, state.waitTime);
-    addLog('粉（ディメロなし）+6分 / -1×6分', 6, state.waitTime);
+    addLog(`粉（ディメロなし）+${w}分 / -1×${m}分`, w, state.waitTime);
   }
   saveState(); renderAll();
 }
@@ -831,7 +1083,6 @@ function subtractTime() {
   checkSoundBoundary(prev, state.waitTime);
   addLog(`${state.subtractMinutes}分戻す`, -(prev - state.waitTime), state.waitTime);
   saveState(); renderAll();
-  bounce(document.getElementById('subtractBtn'));
 }
 
 function setBase(n) {
@@ -845,29 +1096,18 @@ function setMode(m) {
   saveState(); renderAll();
 }
 
-function toggleSound() {
-  state.soundEnabled = !state.soundEnabled;
-  const on = state.soundEnabled;
-  document.getElementById('soundIcon').textContent  = on ? '🔊' : '🔇';
-  document.getElementById('soundLabel').textContent = on ? 'ON'  : 'OFF';
-  document.getElementById('soundToggleBtn').classList.toggle('sound-active', on);
-  saveState();
-}
-
 // ============================================================
 //  SOUND（Web Audio API）
 // ============================================================
 function getAudio() {
   if (!audioCtx) {
-    try {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch(e) { return null; }
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-// 音A: 増加 - 低音「ポン」 0.3秒
+// 音A: 増加 - 低音「ポン」（ゲインを0.55に増量）
 function playSoundA() {
   try {
     const ctx = getAudio(); if (!ctx) return;
@@ -877,39 +1117,31 @@ function playSoundA() {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(300, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.setValueAtTime(0.55, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
     osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
   } catch(e) {}
 }
 
-// 音B: 減少 - 風鈴「チリーン」 0.6秒 ／ 3オシレーター（880Hz + 1760Hz + 3520Hz）
+// 音B: 減少 - 風鈴「チリーン」 0.6秒
 function playSoundB() {
   try {
     const ctx = getAudio(); if (!ctx) return;
     const t   = ctx.currentTime;
     const dur = 0.6;
-
-    // 各オシレーター：基音・2倍音・4倍音
-    const freqs   = [880, 1760, 3520];
-    const vols    = [0.30, 0.18, 0.09];
-    const decays  = [0.60, 0.50, 0.40]; // 高次倍音ほど早く消える
-
+    const freqs  = [880, 1760, 3520];
+    const vols   = [0.30, 0.18, 0.09];
+    const decays = [0.60, 0.50, 0.40];
     freqs.forEach((freq, i) => {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
-
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, t);
-      // わずかにピッチが落ちる（風鈴の共鳴感）
       osc.frequency.exponentialRampToValueAtTime(freq * 0.985, t + dur);
-
-      // 鋭いアタック → 自然な指数減衰
       gain.gain.setValueAtTime(0.001, t);
-      gain.gain.linearRampToValueAtTime(vols[i], t + 0.008); // 8ms で立ち上がり
+      gain.gain.linearRampToValueAtTime(vols[i], t + 0.008);
       gain.gain.exponentialRampToValueAtTime(0.001, t + decays[i]);
-
       osc.start(t); osc.stop(t + dur);
     });
   } catch(e) {}
@@ -922,7 +1154,7 @@ function checkSoundBoundary(prevTime, newTime) {
   const prevBucket = Math.floor(prevTime / 5);
   const newBucket  = Math.floor(newTime  / 5);
   if (prevBucket === newBucket) return;
-  newTime > prevTime ? playSoundA() : playSoundB();
+  if (newTime > prevTime) playSoundA(); else playSoundB();
 }
 
 // ============================================================
@@ -934,33 +1166,108 @@ let editingType  = null;
 function openPrescEditModal(pharmCount, type) {
   editingPharm = pharmCount;
   editingType  = type;
-  const mins  = getTimeValue(pharmCount, type);
-  const defMins = DEFAULT_TIME_TABLE[pharmCount][type];
-  const annot = state.customAnnotations[`${pharmCount}_${type}`] || '';
+  const mins    = getTimeValue(pharmCount, type);
+  const defKey  = pharmCount <= 3 ? pharmCount : 1;
+  const defMins = DEFAULT_TIME_TABLE[defKey] ? DEFAULT_TIME_TABLE[defKey][type] : mins;
+  const annot   = state.customAnnotations[`${pharmCount}_${type}`] || '';
 
-  document.getElementById('prescEditTitle').textContent     = `【${pharmCount}人 / ${TYPE_LABEL[type]}処方】を編集`;
-  document.getElementById('prescEditMinutes').value         = mins;
-  document.getElementById('prescEditHint').textContent      = `初期値：${defMins}分`;
-  document.getElementById('prescEditAnnotation').value      = annot;
+  document.getElementById('prescEditTitle').textContent    = `【${pharmCount}人 / ${TYPE_LABEL[type]}処方】を編集`;
+  document.getElementById('prescEditMinutes').value        = mins;
+  document.getElementById('prescEditHint').textContent     = `初期値：${defMins}分`;
+  document.getElementById('prescEditAnnotation').value     = annot;
   document.getElementById('prescEditAnnotation').placeholder = getAnnotationText(pharmCount, type);
 
   openOverlay('prescEditOverlay');
-  setTimeout(() => {
-    const f = document.getElementById('prescEditMinutes');
-    f.focus(); f.select();
-  }, 100);
+  setTimeout(() => { const f = document.getElementById('prescEditMinutes'); f.focus(); f.select(); }, 100);
 }
 
 function confirmPrescEdit() {
   const mins  = parseInt(document.getElementById('prescEditMinutes').value);
   const annot = document.getElementById('prescEditAnnotation').value.trim();
   const key   = `${editingPharm}_${editingType}`;
-
-  if (!isNaN(mins) && mins > 0) state.customTimeTable[key]  = mins;
+  if (!isNaN(mins) && mins > 0) state.customTimeTable[key] = mins;
   state.customAnnotations[key] = annot;
-
   saveState(); renderPrescGrid();
   closeOverlay('prescEditOverlay');
+}
+
+// ============================================================
+//  OINT/POWDER EDIT MODALS
+// ============================================================
+function openOintEdit() {
+  document.getElementById('ointPreEdit').value    = state.ointPremadeWait;
+  document.getElementById('ointNoEdit').value     = state.ointNoPremadeWait;
+  document.getElementById('ointNoMinusEdit').value= state.ointNoPremadeMinus;
+  openOverlay('ointEditOverlay');
+}
+function confirmOintEdit() {
+  const pre  = parseInt(document.getElementById('ointPreEdit').value);
+  const no   = parseInt(document.getElementById('ointNoEdit').value);
+  const nom  = parseInt(document.getElementById('ointNoMinusEdit').value);
+  if (!isNaN(pre) && pre > 0) state.ointPremadeWait   = pre;
+  if (!isNaN(no)  && no  > 0) state.ointNoPremadeWait = no;
+  if (!isNaN(nom) && nom > 0) state.ointNoPremadeMinus= nom;
+  saveState(); renderSubPanelTimes();
+  closeOverlay('ointEditOverlay');
+}
+
+function openPowderEdit() {
+  document.getElementById('powderPreEdit').value    = state.powderDimeloWait;
+  document.getElementById('powderNoEdit').value     = state.powderNoDimeloWait;
+  document.getElementById('powderNoMinusEdit').value= state.powderNoDimeloMinus;
+  openOverlay('powderEditOverlay');
+}
+function confirmPowderEdit() {
+  const pre  = parseInt(document.getElementById('powderPreEdit').value);
+  const no   = parseInt(document.getElementById('powderNoEdit').value);
+  const nom  = parseInt(document.getElementById('powderNoMinusEdit').value);
+  if (!isNaN(pre) && pre > 0) state.powderDimeloWait   = pre;
+  if (!isNaN(no)  && no  > 0) state.powderNoDimeloWait = no;
+  if (!isNaN(nom) && nom > 0) state.powderNoDimeloMinus= nom;
+  saveState(); renderSubPanelTimes();
+  closeOverlay('powderEditOverlay');
+}
+
+// ============================================================
+//  FREE EDIT MODAL
+// ============================================================
+let editingFreeIdx = -1;
+function openFreeEditModal(idx) {
+  editingFreeIdx = idx;
+  document.getElementById('freeEditField').value = state.freeAddValues[idx];
+  openOverlay('freeEditOverlay');
+  setTimeout(() => { const f = document.getElementById('freeEditField'); f.focus(); f.select(); }, 100);
+}
+function confirmFreeEdit() {
+  const val = parseInt(document.getElementById('freeEditField').value);
+  if (!isNaN(val) && val > 0 && editingFreeIdx >= 0) {
+    state.freeAddValues[editingFreeIdx] = val;
+    state.freeAddValues.sort((a,b) => a - b);
+    saveState(); renderFreeAdd();
+  }
+  closeOverlay('freeEditOverlay');
+}
+function deleteFreeEdit() {
+  if (editingFreeIdx >= 0) {
+    state.freeAddValues.splice(editingFreeIdx, 1);
+    saveState(); renderFreeAdd();
+  }
+  closeOverlay('freeEditOverlay');
+}
+
+// ============================================================
+//  SUBTRACT EDIT
+// ============================================================
+function openSubtractEdit() {
+  document.getElementById('subtractEditField').value = state.subtractMinutes;
+  openOverlay('subtractEditOverlay');
+  setTimeout(() => { const f = document.getElementById('subtractEditField'); f.focus(); f.select(); }, 100);
+}
+function confirmSubtractEdit() {
+  const val = parseInt(document.getElementById('subtractEditField').value);
+  if (!isNaN(val) && val > 0) state.subtractMinutes = val;
+  saveState(); renderAll();
+  closeOverlay('subtractEditOverlay');
 }
 
 // ============================================================
@@ -973,18 +1280,11 @@ function addLog(action, delta, result) {
   if (state.actionLog.length > 200) state.actionLog.length = 200;
 }
 
-function clearLog() {
-  state.actionLog = [];
-  saveState();
-  renderAnnotationList();
-}
-
 // ============================================================
 //  OVERLAYS
 // ============================================================
 function openOverlay(id)  { document.getElementById(id).classList.add('open'); }
 function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
-// 背景タップで閉じる
 function setupOverlayBgClose(id) {
   document.getElementById(id).addEventListener('click', function(e) {
     if (e.target === this) closeOverlay(id);
@@ -997,7 +1297,6 @@ function openManualInput() {
   openOverlay('manualInputOverlay');
   setTimeout(() => { f.focus(); f.select(); }, 100);
 }
-
 function confirmManualInput() {
   const val = parseInt(document.getElementById('manualInputField').value);
   if (!isNaN(val) && val >= 0) {
@@ -1010,13 +1309,28 @@ function confirmManualInput() {
   closeOverlay('manualInputOverlay');
 }
 
+function openMinusOneEdit() {
+  const f = document.getElementById('minusOneField');
+  f.value = state.minusOneRemainingTime;
+  openOverlay('minusOneOverlay');
+  setTimeout(() => { f.focus(); f.select(); }, 100);
+}
+function confirmMinusOneEdit() {
+  const val = parseInt(document.getElementById('minusOneField').value);
+  if (!isNaN(val) && val >= 0) {
+    state.minusOneRemainingTime = val;
+    addLog(`-1残り時間を${val}分に設定`, 0, state.waitTime);
+    saveState(); renderAll();
+  }
+  closeOverlay('minusOneOverlay');
+}
+
 function openIppoDialog() {
   const f = document.getElementById('ippoInputField');
   f.value = '';
   openOverlay('ippoOverlay');
   setTimeout(() => f.focus(), 100);
 }
-
 function confirmIppo() {
   const val = parseInt(document.getElementById('ippoInputField').value);
   if (!isNaN(val) && val > 0) {
@@ -1025,6 +1339,7 @@ function confirmIppo() {
     saveState(); renderAll();
   }
   closeOverlay('ippoOverlay');
+  bounce(document.getElementById('ippoBtn'));
 }
 
 function openFreeAddDialog() {
@@ -1033,73 +1348,147 @@ function openFreeAddDialog() {
   openOverlay('freeAddOverlay');
   setTimeout(() => f.focus(), 100);
 }
-
 function confirmFreeAdd() {
   const val = parseInt(document.getElementById('freeAddInputField').value);
   if (!isNaN(val) && val > 0 && !state.freeAddValues.includes(val)) {
     state.freeAddValues.push(val);
-    state.freeAddValues.sort((a, b) => a - b);
+    state.freeAddValues.sort((a,b) => a - b);
     saveState(); renderFreeAdd();
   }
   closeOverlay('freeAddOverlay');
 }
 
+// ============================================================
+//  SETTINGS
+// ============================================================
 function openSettings() {
-  document.getElementById('subtractMinSetting').value    = state.subtractMinutes;
   document.getElementById('soundThresholdSetting').value = state.soundThreshold;
+  document.getElementById('soundToggleCheck').checked    = state.soundEnabled;
+  renderPharmCountSettings();
   openOverlay('settingsOverlay');
 }
 
+function renderPharmCountSettings() {
+  const container = document.getElementById('pharmCountSettings');
+  container.innerHTML = '';
+  const max = state.maxPharmacistCount || 3;
+  for (let n = max; n >= 1; n--) {
+    const row = document.createElement('div');
+    row.className = 'pharm-count-row';
+    row.innerHTML = `<span class="pharm-count-badge">${n}</span><span class="pharm-count-label">${n}人体制</span>`;
+    if (n === max && max > 1) {
+      const del = document.createElement('button');
+      del.className = 'pharm-count-del';
+      del.textContent = '削除';
+      del.addEventListener('click', () => {
+        state.maxPharmacistCount--;
+        if (state.basePharmacistCount > state.maxPharmacistCount) {
+          state.basePharmacistCount = state.maxPharmacistCount;
+        }
+        renderPharmCountSettings();
+      });
+      row.appendChild(del);
+    }
+    container.appendChild(row);
+  }
+  const addBtn = document.createElement('button');
+  addBtn.className = 'pharm-count-add';
+  addBtn.textContent = `＋ ${max + 1}人体制を追加`;
+  addBtn.addEventListener('click', () => {
+    state.maxPharmacistCount++;
+    renderPharmCountSettings();
+  });
+  container.appendChild(addBtn);
+}
+
 function saveSettings() {
-  const s = parseInt(document.getElementById('subtractMinSetting').value);
   const t = parseInt(document.getElementById('soundThresholdSetting').value);
-  if (!isNaN(s) && s > 0) state.subtractMinutes = s;
-  if (!isNaN(t) && t > 0) state.soundThreshold  = t;
-  saveState(); renderAll();
+  if (!isNaN(t) && t > 0) state.soundThreshold = t;
+  state.soundEnabled = document.getElementById('soundToggleCheck').checked;
+  // maxPharmacistCount はリアルタイムに反映済み
+  saveState();
+  buildPharmButtons();
+  buildPrescGrid();
+  renderAll();
   closeOverlay('settingsOverlay');
 }
 
 function doReset() {
-  localStorage.removeItem('pharmacyWait_v3');
+  localStorage.removeItem('pharmacyWait_v4');
   state = {
     waitTime: 0, basePharmacistCount: 3,
     minusOneRemainingTime: 0, lastUpdateTimestamp: Date.now(),
     mode: 'auto', soundEnabled: true,
     subtractMinutes: 5, soundThreshold: 15,
+    maxPharmacistCount: 3,
+    ointPremadeWait: 2, ointNoPremadeWait: 5, ointNoPremadeMinus: 5,
+    powderDimeloWait: 3, powderNoDimeloWait: 6, powderNoDimeloMinus: 6,
     freeAddValues: [2,5,10,15,20,30],
     customTimeTable: {}, customAnnotations: {},
-    actionLog: []
+    memos: [], actionLog: []
   };
-  saveState(); renderAll();
+  saveState();
+  buildPharmButtons();
+  buildPrescGrid();
+  renderAll();
   closeOverlay('confirmResetOverlay');
   closeOverlay('settingsOverlay');
 }
 
-function openAnnotations() { renderAnnotationList(); openOverlay('annotationsOverlay'); }
-function renderAnnotationList() {
-  const el = document.getElementById('annotationList');
-  if (!state.actionLog.length) { el.innerHTML = '<div class="log-empty">操作ログがありません</div>'; return; }
-  el.innerHTML = state.actionLog.map(item => `
-    <div class="log-item">
-      <div><span class="log-action">${escHtml(item.action)}</span>&nbsp;→&nbsp;<span class="log-result">${item.result}分</span></div>
-      <div class="log-time">${escHtml(item.time)}</div>
+// ============================================================
+//  MEMO
+// ============================================================
+function openMemo() { renderMemoList(); openOverlay('memoOverlay'); }
+function renderMemoList() {
+  const el = document.getElementById('memoList');
+  if (!state.memos.length) { el.innerHTML = '<div class="memo-empty">メモはありません</div>'; return; }
+  el.innerHTML = state.memos.map((m, i) => `
+    <div class="memo-item">
+      <div class="memo-text">${escHtml(m.text)}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+        <span class="memo-time">${escHtml(m.time)}</span>
+        <button class="memo-del" data-idx="${i}" aria-label="削除">✕</button>
+      </div>
     </div>`).join('');
+  el.querySelectorAll('.memo-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.memos.splice(parseInt(btn.dataset.idx), 1);
+      saveState(); renderMemoList();
+    });
+  });
+}
+function addMemo() {
+  const ta = document.getElementById('memoTextarea');
+  const text = ta.value.trim();
+  if (!text) return;
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  state.memos.push({ text, time: timeStr });
+  saveState();
+  ta.value = '';
+  renderMemoList();
 }
 
+// ============================================================
+//  HISTORY
+// ============================================================
 function openHistory() { renderHistoryList(); openOverlay('historyOverlay'); }
 function renderHistoryList() {
   const el = document.getElementById('historyList');
-  if (!state.actionLog.length) { el.innerHTML = '<div class="log-empty">履歴がありません</div>'; return; }
+  if (!state.actionLog.length) { el.innerHTML = '<div class="memo-empty">履歴がありません</div>'; return; }
   el.innerHTML = state.actionLog.map(item => `
-    <div class="log-item" style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <div>
-        <span class="log-action">${escHtml(item.action)}</span><br>
-        <span style="font-size:11px;color:#7f8c8d;">待ち時間：<strong>${item.result}分</strong>${item.delta !== 0 ? `（${item.delta > 0 ? '+' : ''}${item.delta}分）` : ''}</span>
+    <div class="memo-item">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:var(--clr-text);">${escHtml(item.action)}</div>
+        <div style="font-size:11px;color:var(--clr-sub);">待ち時間：<strong>${item.result}分</strong>${item.delta !== 0 ? `（${item.delta > 0 ? '+' : ''}${item.delta}分）` : ''}</div>
       </div>
-      <div class="log-time" style="flex-shrink:0;margin-left:8px;text-align:right;">${escHtml(item.time)}</div>
+      <span class="memo-time">${escHtml(item.time)}</span>
     </div>`).join('');
 }
 
+// ============================================================
+//  TOOLTIP
+// ============================================================
 let tooltipTimeout = null;
 function showTooltip(text) {
   clearTimeout(tooltipTimeout);
@@ -1109,10 +1498,9 @@ function showTooltip(text) {
 }
 function closeTooltip() { document.getElementById('tooltipOverlay').classList.remove('open'); }
 
-function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
+// ============================================================
+//  BOUNCE
+// ============================================================
 function bounce(el) {
   if (!el) return;
   el.classList.remove('btn-bounce');
@@ -1122,96 +1510,114 @@ function bounce(el) {
 }
 
 // ============================================================
-//  SETUP ALL BUTTONS（iOS 対応イベント登録）
+//  SETUP ALL BUTTONS
 // ============================================================
 function setupAllButtons() {
-  // -- 待ち時間タップ --
-  document.getElementById('waitTimeRow').addEventListener('click', openManualInput);
+  // 待ち時間タップ→手入力
+  document.getElementById('waitTimeNum').addEventListener('click', openManualInput);
+  document.getElementById('waitSecsNum').addEventListener('click', openManualInput);
 
-  // -- アクションボタン --
-  document.getElementById('manualInputBtn').addEventListener('click', openManualInput);
-  document.getElementById('subtractBtn').addEventListener('click', subtractTime);
-  document.getElementById('soundToggleBtn').addEventListener('click', toggleSound);
+  // -1残り時間タップ→編集
+  document.getElementById('minusInfoDisplay').addEventListener('click', openMinusOneEdit);
 
-  // -- 薬剤師人数ボタン --
-  document.querySelectorAll('.pharm-btn').forEach(btn => {
-    btn.addEventListener('click', () => setBase(parseInt(btn.dataset.count)));
-  });
-
-  // -- モードボタン --
+  // 薬剤師人数・モード
   document.getElementById('modeAuto').addEventListener('click',   () => setMode('auto'));
   document.getElementById('modeManual').addEventListener('click', () => setMode('manual'));
 
-  // -- ヘルプアイコン --
+  // -5分ボタン（長押し対応）
+  setupSubtractBtnLongPress();
+
+  // ヘルプアイコン
   document.getElementById('pharmHelp').addEventListener('click', () =>
-    showTooltip('薬剤師人数を選択します。青色（実効人数）が処方時間の計算に使われます。-1適用中は自動で人数が減ります。'));
+    showTooltip('薬剤師人数を選択します。青色（実効人数）が処方時間の計算に使われます。'));
   document.getElementById('prescHelp').addEventListener('click', () =>
-    showTooltip('処方サイズを選択して待ち時間を加算します。ハイライト行が現在の実効人数に対応。\n長押しで時間・注釈を編集できます。'));
+    showTooltip('処方サイズを選択して待ち時間を加算します。\n長押しで時間・注釈を編集できます。'));
   document.getElementById('ointHelp').addEventListener('click', () =>
-    showTooltip('軟膏\n予製あり：待ち+2分\n予製なし：待ち+5分＋薬剤師-1（5分間）'));
+    showTooltip('軟膏\n長押しで時間を編集できます'));
   document.getElementById('powderHelp').addEventListener('click', () =>
-    showTooltip('粉薬\nディメロあり：待ち+3分\nディメロなし：待ち+6分＋薬剤師-1（6分間）'));
+    showTooltip('粉薬\n長押しで時間を編集できます'));
   document.getElementById('ippoHelp').addEventListener('click', () =>
-    showTooltip('一包化\nすぐ受け取り：薬剤師-1を指定分間適用（待ち時間加算なし）'));
+    showTooltip('一包化\nすぐ受け取り：薬剤師-1を指定分間適用'));
   document.getElementById('freeHelp').addEventListener('click', () =>
-    showTooltip('任意の分数を待ち時間に加算します。＋追加で新しいボタンを作れます。'));
+    showTooltip('任意の分数を加算。長押しで編集・削除できます。'));
 
-  // -- 処方グリッド（長押し対応・iOS完全対応版）--
-  setupPrescButtons();
+  // 軟膏・粉（長押し対応）
+  setupSubBtnLongPress('ointPreBtn', openOintEdit, () => addOintment(true));
+  setupSubBtnLongPress('ointNoBtn',  openOintEdit, () => addOintment(false));
+  setupSubBtnLongPress('powderPreBtn', openPowderEdit, () => addPowder(true));
+  setupSubBtnLongPress('powderNoBtn',  openPowderEdit, () => addPowder(false));
 
-  // -- 軟膏・粉・一包化 --
-  document.getElementById('ointPreBtn').addEventListener('click', () => addOintment(true));
-  document.getElementById('ointNoBtn').addEventListener('click',  () => addOintment(false));
-  document.getElementById('powderPreBtn').addEventListener('click', () => addPowder(true));
-  document.getElementById('powderNoBtn').addEventListener('click',  () => addPowder(false));
+  // 一包化
   document.getElementById('ippoBtn').addEventListener('click', openIppoDialog);
 
-  // -- ナビ --
-  document.getElementById('navAnnotations').addEventListener('click', openAnnotations);
+  // ナビ
+  document.getElementById('navMemo').addEventListener('click',     openMemo);
   document.getElementById('navSettings').addEventListener('click', openSettings);
-  document.getElementById('navHistory').addEventListener('click', openHistory);
+  document.getElementById('navHistory').addEventListener('click',  openHistory);
 
-  // -- モーダルボタン --
-  document.getElementById('manualCancel').addEventListener('click',  () => closeOverlay('manualInputOverlay'));
-  document.getElementById('manualConfirm').addEventListener('click', confirmManualInput);
-  document.getElementById('ippoCancel').addEventListener('click',    () => closeOverlay('ippoOverlay'));
-  document.getElementById('ippoConfirm').addEventListener('click',   confirmIppo);
-  document.getElementById('freeAddCancel').addEventListener('click', () => closeOverlay('freeAddOverlay'));
-  document.getElementById('freeAddConfirm').addEventListener('click',confirmFreeAdd);
+  // モーダルボタン
+  document.getElementById('manualCancel').addEventListener('click',    () => closeOverlay('manualInputOverlay'));
+  document.getElementById('manualConfirm').addEventListener('click',   confirmManualInput);
+  document.getElementById('minusOneCancel').addEventListener('click',  () => closeOverlay('minusOneOverlay'));
+  document.getElementById('minusOneConfirm').addEventListener('click', confirmMinusOneEdit);
+  document.getElementById('ippoCancel').addEventListener('click',      () => closeOverlay('ippoOverlay'));
+  document.getElementById('ippoConfirm').addEventListener('click',     confirmIppo);
+  document.getElementById('freeAddCancel').addEventListener('click',   () => closeOverlay('freeAddOverlay'));
+  document.getElementById('freeAddConfirm').addEventListener('click',  confirmFreeAdd);
+  document.getElementById('freeEditDelete').addEventListener('click',  deleteFreeEdit);
+  document.getElementById('freeEditCancel').addEventListener('click',  () => closeOverlay('freeEditOverlay'));
+  document.getElementById('freeEditConfirm').addEventListener('click', confirmFreeEdit);
+  document.getElementById('subtractEditCancel').addEventListener('click',  () => closeOverlay('subtractEditOverlay'));
+  document.getElementById('subtractEditConfirm').addEventListener('click', confirmSubtractEdit);
   document.getElementById('prescEditCancel').addEventListener('click',  () => closeOverlay('prescEditOverlay'));
   document.getElementById('prescEditConfirm').addEventListener('click', confirmPrescEdit);
+  document.getElementById('ointEditCancel').addEventListener('click',  () => closeOverlay('ointEditOverlay'));
+  document.getElementById('ointEditConfirm').addEventListener('click', confirmOintEdit);
+  document.getElementById('powderEditCancel').addEventListener('click',  () => closeOverlay('powderEditOverlay'));
+  document.getElementById('powderEditConfirm').addEventListener('click', confirmPowderEdit);
   document.getElementById('settingsClose').addEventListener('click', () => closeOverlay('settingsOverlay'));
   document.getElementById('settingsSave').addEventListener('click',  saveSettings);
   document.getElementById('resetBtn').addEventListener('click',      () => openOverlay('confirmResetOverlay'));
   document.getElementById('resetCancel').addEventListener('click',   () => closeOverlay('confirmResetOverlay'));
   document.getElementById('resetConfirm').addEventListener('click',  doReset);
-  document.getElementById('clearLogBtn').addEventListener('click',   clearLog);
-  document.getElementById('annotationsClose').addEventListener('click', () => closeOverlay('annotationsOverlay'));
+  document.getElementById('memoClose').addEventListener('click',     () => closeOverlay('memoOverlay'));
+  document.getElementById('memoAddBtn').addEventListener('click',    addMemo);
+  document.getElementById('clearLogBtn').addEventListener('click',   () => { state.actionLog = []; saveState(); renderHistoryList(); });
   document.getElementById('historyClose').addEventListener('click',  () => closeOverlay('historyOverlay'));
 
-  // -- オーバーレイ背景タップで閉じる --
-  ['manualInputOverlay','ippoOverlay','freeAddOverlay','prescEditOverlay',
-   'settingsOverlay','confirmResetOverlay','annotationsOverlay','historyOverlay'].forEach(id => {
-    setupOverlayBgClose(id);
+  // メモ：Enterキーで追加（Shift+Enterは改行）
+  document.getElementById('memoTextarea').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addMemo(); }
   });
 
-  // -- ツールチップ背景タップで閉じる --
+  // オーバーレイ背景タップで閉じる
+  ['manualInputOverlay','minusOneOverlay','ippoOverlay','freeAddOverlay','freeEditOverlay',
+   'subtractEditOverlay','prescEditOverlay','ointEditOverlay','powderEditOverlay',
+   'settingsOverlay','confirmResetOverlay','memoOverlay','historyOverlay'].forEach(id => {
+    setupOverlayBgClose(id);
+  });
   document.getElementById('tooltipOverlay').addEventListener('click', closeTooltip);
 
-  // -- キーボードショートカット --
+  // キーボード
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      ['manualInputOverlay','ippoOverlay','freeAddOverlay','prescEditOverlay',
-       'settingsOverlay','confirmResetOverlay','annotationsOverlay','historyOverlay'].forEach(closeOverlay);
+      ['manualInputOverlay','minusOneOverlay','ippoOverlay','freeAddOverlay','freeEditOverlay',
+       'subtractEditOverlay','prescEditOverlay','ointEditOverlay','powderEditOverlay',
+       'settingsOverlay','confirmResetOverlay','memoOverlay','historyOverlay'].forEach(closeOverlay);
       closeTooltip(); return;
     }
     if (e.key === 'Enter') {
       const pairs = [
-        ['manualInputOverlay', confirmManualInput],
-        ['ippoOverlay',        confirmIppo],
-        ['freeAddOverlay',     confirmFreeAdd],
-        ['prescEditOverlay',   confirmPrescEdit],
-        ['settingsOverlay',    saveSettings],
+        ['manualInputOverlay',    confirmManualInput],
+        ['minusOneOverlay',       confirmMinusOneEdit],
+        ['ippoOverlay',           confirmIppo],
+        ['freeAddOverlay',        confirmFreeAdd],
+        ['freeEditOverlay',       confirmFreeEdit],
+        ['subtractEditOverlay',   confirmSubtractEdit],
+        ['prescEditOverlay',      confirmPrescEdit],
+        ['ointEditOverlay',       confirmOintEdit],
+        ['powderEditOverlay',     confirmPowderEdit],
+        ['settingsOverlay',       saveSettings],
       ];
       for (const [id, fn] of pairs) {
         if (document.getElementById(id).classList.contains('open')) { fn(); return; }
@@ -1219,7 +1625,7 @@ function setupAllButtons() {
     }
   });
 
-  // -- iOS AudioContext アンロック（touchstart で解放）--
+  // iOS AudioContext アンロック
   const unlockAudio = () => {
     if (!audioCtx) {
       try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
@@ -1227,7 +1633,7 @@ function setupAllButtons() {
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   };
   document.addEventListener('touchstart', unlockAudio, { passive: true, once: true });
-  document.addEventListener('click', unlockAudio, { once: true });
+  document.addEventListener('click',      unlockAudio, { once: true });
 }
 
 // ============================================================
@@ -1237,61 +1643,24 @@ function setupPrescButtons() {
   document.querySelectorAll('.presc-btn').forEach(btn => {
     const pharmCount = parseInt(btn.dataset.pharm);
     const type       = btn.dataset.type;
+    let pressTimer = null, didLongPress = false, lastTouchEnd = 0;
 
-    let pressTimer   = null;
-    let didLongPress = false;
-    let lastTouchEnd = 0;
+    const startPress = () => { didLongPress = false; pressTimer = setTimeout(() => { didLongPress = true; openPrescEditModal(pharmCount, type); }, 600); };
+    const cancelPress = () => { clearTimeout(pressTimer); pressTimer = null; };
 
-    const startPress = () => {
-      didLongPress = false;
-      pressTimer = setTimeout(() => {
-        didLongPress = true;
-        openPrescEditModal(pharmCount, type);
-      }, 600);
-    };
-
-    const cancelPress = () => {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    };
-
-    // ---- Touch events（iOS/Android）----
-    btn.addEventListener('touchstart', (e) => {
-      startPress();
-    }, { passive: true });
-
-    btn.addEventListener('touchmove', () => {
-      // スクロール時はキャンセル
-      cancelPress();
-    }, { passive: true });
-
+    btn.addEventListener('touchstart', startPress, { passive: true });
+    btn.addEventListener('touchmove',  cancelPress, { passive: true });
     btn.addEventListener('touchend', (e) => {
-      cancelPress();
-      lastTouchEnd = Date.now();
-      if (!didLongPress) {
-        e.preventDefault(); // ghost click 防止
-        addPrescTime(pharmCount, type, btn);
-      }
-      // 次のtickでフラグリセット
+      cancelPress(); lastTouchEnd = Date.now();
+      if (!didLongPress) { e.preventDefault(); addPrescTime(pharmCount, type, btn); }
       setTimeout(() => { didLongPress = false; }, 50);
     });
-
-    btn.addEventListener('touchcancel', () => {
-      cancelPress();
-      didLongPress = false;
-    });
-
-    // ---- Mouse events（デスクトップ）----
-    btn.addEventListener('mousedown', () => {
-      if (Date.now() - lastTouchEnd < 600) return; // ghost event 無視
-      startPress();
-    });
-
-    btn.addEventListener('mouseup', cancelPress);
-    btn.addEventListener('mouseleave', cancelPress);
-
+    btn.addEventListener('touchcancel', () => { cancelPress(); didLongPress = false; });
+    btn.addEventListener('mousedown',   () => { if (Date.now() - lastTouchEnd < 600) return; startPress(); });
+    btn.addEventListener('mouseup',     cancelPress);
+    btn.addEventListener('mouseleave',  cancelPress);
     btn.addEventListener('click', (e) => {
-      if (Date.now() - lastTouchEnd < 600) return; // touchend 後の ghost click 無視
+      if (Date.now() - lastTouchEnd < 600) return;
       if (didLongPress) { didLongPress = false; return; }
       addPrescTime(pharmCount, type, btn);
     });
