@@ -1164,18 +1164,31 @@ function renderSubPanelTimes() {
 //  LONG PRESS HELPERS
 // ============================================================
 function makeLongPress(btn, onTap, onLong) {
-  let pressTimer = null, didLong = false, lastTouch = 0;
-  const start  = () => { didLong = false; pressTimer = setTimeout(() => { didLong = true; onLong(); }, 600); };
+  let pressTimer = null, didLong = false, lastTouch = 0, didMove = false;
+  let startX = 0, startY = 0;
+  const MOVE_THRESHOLD = 8;
+  const start = (e) => {
+    didLong = false; didMove = false;
+    if (e && e.touches) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }
+    pressTimer = setTimeout(() => { didLong = true; onLong(); }, 600);
+  };
   const cancel = () => { clearTimeout(pressTimer); pressTimer = null; };
-  btn.addEventListener('touchstart',  start,  { passive: true });
-  btn.addEventListener('touchmove',   cancel, { passive: true });
+  btn.addEventListener('touchstart', start, { passive: true });
+  btn.addEventListener('touchmove', (e) => {
+    if (e.touches) {
+      const dx = Math.abs(e.touches[0].clientX - startX);
+      const dy = Math.abs(e.touches[0].clientY - startY);
+      if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) didMove = true;
+    }
+    cancel();
+  }, { passive: true });
   btn.addEventListener('touchend', (e) => {
     cancel(); lastTouch = Date.now();
-    if (!didLong) { e.preventDefault(); onTap(); }
-    setTimeout(() => { didLong = false; }, 50);
+    if (!didLong && !didMove) { e.preventDefault(); onTap(); }
+    setTimeout(() => { didLong = false; didMove = false; }, 50);
   });
-  btn.addEventListener('touchcancel', () => { cancel(); didLong = false; });
-  btn.addEventListener('mousedown',   () => { if (Date.now() - lastTouch < 600) return; start(); });
+  btn.addEventListener('touchcancel', () => { cancel(); didLong = false; didMove = false; });
+  btn.addEventListener('mousedown',   () => { if (Date.now() - lastTouch < 600) return; start(null); });
   btn.addEventListener('mouseup',     cancel);
   btn.addEventListener('mouseleave',  cancel);
   btn.addEventListener('click', (e) => {
