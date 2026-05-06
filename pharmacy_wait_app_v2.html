@@ -49,7 +49,10 @@
     .wait-secs-num { font-size: 32px; font-weight: 700; color: var(--dyn-color); transition: color 0.6s ease; font-variant-numeric: tabular-nums; }
     .wait-secs-unit { font-size: 14px; font-weight: 500; color: var(--dyn-color); transition: color 0.6s ease; }
     .wait-card-divider { width: 1px; height: 64px; background: var(--clr-border); margin: 0 14px; flex-shrink: 0; align-self: center; }
-    .wait-card-right { text-align: right; flex-shrink: 0; }
+    .wait-card-right {
+      text-align: right; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: flex-end;
+    }
     .pharm-right-label { font-size: 12px; color: var(--clr-sub); margin-bottom: 2px; }
     .pharm-right-count { font-size: 30px; font-weight: 700; color: var(--clr-primary); }
     .pharm-right-count .unit { font-size: 16px; font-weight: 500; }
@@ -71,14 +74,16 @@
     }
     .subtract-inline-btn:active { transform: scale(0.96); background: var(--clr-bg); }
     .minus-one-info {
-      margin-left: auto; padding: 8px 14px; border: 1.5px solid var(--clr-border);
-      border-radius: 20px; background: var(--clr-card); font-size: 15px; font-weight: 700;
+      display: none; margin-top: 5px;
+      padding: 3px 8px; border: 1.5px solid var(--clr-border);
+      border-radius: 10px; background: var(--clr-bg);
+      font-size: 11px; font-weight: 600;
       cursor: pointer; color: var(--clr-sub); font-family: inherit;
       touch-action: manipulation; transition: all 0.15s;
-      white-space: nowrap; flex-shrink: 0; display: none;
-      -webkit-appearance: none;
+      white-space: nowrap; text-align: right; align-self: flex-end;
+      -webkit-appearance: none; line-height: 1.4;
     }
-    .minus-one-info:active { transform: scale(0.96); background: var(--clr-bg); }
+    .minus-one-info:active { background: var(--clr-primary-light); border-color: var(--clr-primary); }
 
     /* ===== MAIN GRID ===== */
     .main-grid { display: grid; grid-template-columns: 130px 1fr; gap: 10px; margin-bottom: 10px; }
@@ -444,12 +449,12 @@
       <div class="wait-card-right">
         <div class="pharm-right-label">薬剤師</div>
         <div class="pharm-right-count"><span id="effectiveCountDisplay">3</span><span class="unit">人</span></div>
+        <button class="minus-one-info" id="minusInfoDisplay"></button>
       </div>
     </div>
     <div class="wait-card-bottom">
       <span class="wait-status-badge" id="statusBadge">通常</span>
       <button class="subtract-inline-btn" id="subtractBtn">－ <span id="subtractLabel">5</span>分</button>
-      <button class="minus-one-info" id="minusInfoDisplay"></button>
     </div>
   </div>
 
@@ -532,6 +537,9 @@
   <button class="nav-item" id="navMemo"><span class="nav-icon">📝</span>メモ</button>
   <button class="nav-item" id="navSettings"><span class="nav-icon">⚙️</span>設定</button>
   <button class="nav-item" id="navHistory"><span class="nav-icon">🕐</span>履歴</button>
+  <button class="nav-item" id="navUndo" style="opacity:0.35;pointer-events:none;color:var(--clr-orange);">
+    <span class="nav-icon">↩</span><span class="nav-label">戻す</span>
+  </button>
 </nav>
 
 <!-- ===== MODALS ===== -->
@@ -541,6 +549,9 @@
   <div class="modal">
     <div class="modal-title">待ち時間を手入力</div>
     <input class="modal-input" type="number" id="manualInputField" min="0" max="999" placeholder="分" inputmode="numeric">
+    <div class="minus-one-quick-row">
+      <button class="minus-one-quick-btn zero-btn" id="manualResetBtn">0分リセット</button>
+    </div>
     <div class="modal-btns">
       <button class="modal-cancel" id="manualCancel">キャンセル</button>
       <button class="modal-confirm" id="manualConfirm">確定</button>
@@ -795,6 +806,64 @@ let state = {
 let audioCtx = null;
 let lastSoundMinute = -1;
 let prescExpanded = false;
+let undoStack = []; // {waitTime, minusOneRemainingTime, description}
+const UNDO_MAX = 10;
+
+function pushUndo(description) {
+  undoStack.push({
+    waitTime: state.waitTime,
+    minusOneRemainingTime: state.minusOneRemainingTime,
+    description
+  });
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  renderUndoBtn();
+}
+
+function doUndo() {
+  if (!undoStack.length) return;
+  const snap = undoStack.pop();
+  state.waitTime              = snap.waitTime;
+  state.minusOneRemainingTime = snap.minusOneRemainingTime;
+  // lastUpdateTimestamp はそのまま（経過時間を維持）
+  addLog(`↩ 取消：${snap.description}`, 0, state.waitTime);
+  saveState(); renderAll(); renderUndoBtn();
+  showUndoToast(`「${snap.description}」を取り消しました`);
+}
+
+function renderUndoBtn() {
+  const btn = document.getElementById('navUndo');
+  if (!btn) return;
+  if (undoStack.length > 0) {
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+    const last = undoStack[undoStack.length - 1];
+    btn.querySelector('.nav-label').textContent = `↩ 戻す`;
+  } else {
+    btn.style.opacity = '0.35';
+    btn.style.pointerEvents = 'none';
+  }
+}
+
+let undoToastTimer = null;
+function showUndoToast(msg) {
+  let toast = document.getElementById('undoToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'undoToast';
+    toast.style.cssText = `
+      position:fixed; bottom:72px; left:50%; transform:translateX(-50%);
+      background:rgba(44,62,80,0.88); color:white; padding:10px 20px;
+      border-radius:20px; font-size:13px; font-weight:600; z-index:500;
+      pointer-events:none; white-space:nowrap;
+      transition: opacity 0.3s;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(undoToastTimer);
+  undoToastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+}
 
 // ============================================================
 //  HELPERS
@@ -987,8 +1056,7 @@ function renderWaitCard(secs) {
   const minusBtn = document.getElementById('minusInfoDisplay');
   if (state.minusOneRemainingTime > 0 && state.mode === 'auto') {
     minusBtn.textContent = `-1：残り${state.minusOneRemainingTime}分`;
-    minusBtn.style.display = 'inline-flex';
-    minusBtn.style.alignItems = 'center';
+    minusBtn.style.display = 'inline-block';
   } else {
     minusBtn.style.display = 'none';
   }
@@ -1088,6 +1156,7 @@ function setupFreeBtnEvents(btn, value, idx) {
 // ============================================================
 function addPrescTime(pharmCount, type, btn) {
   const mins = getTimeValue(pharmCount, type);
+  pushUndo(getAnnotationText(pharmCount, type) + ` +${mins}分`);
   const prev = state.waitTime;
   state.waitTime += mins;
   checkSoundBoundary(prev, state.waitTime);
@@ -1099,6 +1168,7 @@ function addPrescTime(pharmCount, type, btn) {
 }
 
 function addOintment(hasPremade) {
+  pushUndo(hasPremade ? `軟膏（予製あり）` : `軟膏（予製なし）`);
   const prev = state.waitTime;
   if (hasPremade) {
     const w = state.ointPremadeWait;
@@ -1115,6 +1185,7 @@ function addOintment(hasPremade) {
 }
 
 function addPowder(hasDimelo) {
+  pushUndo(hasDimelo ? `粉（ディメロあり）` : `粉（ディメロなし）`);
   const prev = state.waitTime;
   if (hasDimelo) {
     const w = state.powderDimeloWait;
@@ -1131,6 +1202,7 @@ function addPowder(hasDimelo) {
 }
 
 function addFreeTime(minutes) {
+  pushUndo(`自由加算 +${minutes}分`);
   const prev = state.waitTime;
   state.waitTime += minutes;
   checkSoundBoundary(prev, state.waitTime);
@@ -1139,6 +1211,7 @@ function addFreeTime(minutes) {
 }
 
 function subtractTime() {
+  pushUndo(`－${state.subtractMinutes}分`);
   const prev = state.waitTime;
   state.waitTime = Math.max(0, state.waitTime - state.subtractMinutes);
   checkSoundBoundary(prev, state.waitTime);
@@ -1334,6 +1407,7 @@ function openManualInput() {
 function confirmManualInput() {
   const val = parseInt(document.getElementById('manualInputField').value);
   if (!isNaN(val) && val >= 0) {
+    pushUndo(`手入力（${state.waitTime}分→${val}分）`);
     const prev = state.waitTime;
     state.waitTime = val;
     checkSoundBoundary(prev, val);
@@ -1364,6 +1438,7 @@ function openIppoDialog() {
 }
 function confirmIppoWith(val) {
   if (!isNaN(val) && val > 0) {
+    pushUndo(`一包化 -1×${val}分`);
     state.minusOneRemainingTime += val;
     addLog(`一包化（すぐ受け取り）-1×${val}分`, 0, state.waitTime);
     saveState(); renderAll();
@@ -1567,9 +1642,6 @@ function setupAllButtons() {
   document.getElementById('freeHelp').addEventListener('click', () =>
     showTooltip('任意の分数を待ち時間に加算します。\n長押しで編集・削除ができます。'));
 
-  // 処方グリッド（長押し）
-  setupPrescButtons();
-
   // 軟膏・粉（長押し）
   makeLongPress(document.getElementById('ointPreBtn'),   () => { addOintment(true);  bounce(document.getElementById('ointPreBtn'));  }, openOintEdit);
   makeLongPress(document.getElementById('ointNoBtn'),    () => { addOintment(false); bounce(document.getElementById('ointNoBtn'));   }, openOintEdit);
@@ -1588,10 +1660,12 @@ function setupAllButtons() {
   document.getElementById('navMemo').addEventListener('click',     openMemo);
   document.getElementById('navSettings').addEventListener('click', openSettings);
   document.getElementById('navHistory').addEventListener('click',  openHistory);
+  document.getElementById('navUndo').addEventListener('click',     doUndo);
 
   // モーダルボタン
   document.getElementById('manualCancel').addEventListener('click',    () => closeOverlay('manualInputOverlay'));
   document.getElementById('manualConfirm').addEventListener('click',   confirmManualInput);
+  document.getElementById('manualResetBtn').addEventListener('click',  () => { document.getElementById('manualInputField').value = 0; });
   document.getElementById('minusOneCancel').addEventListener('click',  () => closeOverlay('minusOneOverlay'));
   document.getElementById('minusOneConfirm').addEventListener('click', confirmMinusOneEdit);
   document.getElementById('ippoCancel').addEventListener('click',      () => closeOverlay('ippoOverlay'));
