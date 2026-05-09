@@ -808,6 +808,12 @@
 
 <script>
 // ============================================================
+//  ★ V3 秒ベース タイマー実装
+//  内部状態は totalSeconds（秒）で管理
+//  表示時のみ 分:秒 に変換
+// ============================================================
+
+// ============================================================
 //  CONSTANTS
 // ============================================================
 const DEFAULT_TIME_TABLE = {
@@ -825,9 +831,9 @@ const IPPO_PRESETS  = [5, 10, 15, 20, 25, 30, 40, 50, 60];
 //  STATE
 // ============================================================
 let state = {
-  waitTime: 0,
+  totalSeconds: 0,          // ★ 待ち時間を秒で管理（旧: waitTime 分）
   basePharmacistCount: 3,
-  minusOneRemainingTime: 0,
+  minusOneRemainingTime: 0, // -1 残り時間（分）
   lastUpdateTimestamp: Date.now(),
   mode: 'auto',
   soundEnabled: true,
@@ -852,10 +858,11 @@ let lastSoundMinute = -1;
 let prescExpanded = false;
 let undoStack = [];
 const UNDO_MAX = 10;
+let tickCount = 0; // minusOneRemainingTime 用 秒カウンタ（60でリセット→1分）
 
 function pushUndo(description) {
   undoStack.push({
-    waitTime: state.waitTime,
+    totalSeconds: state.totalSeconds,
     minusOneRemainingTime: state.minusOneRemainingTime,
     description
   });
@@ -866,9 +873,10 @@ function pushUndo(description) {
 function doUndo() {
   if (!undoStack.length) return;
   const snap = undoStack.pop();
-  state.waitTime              = snap.waitTime;
+  state.totalSeconds          = snap.totalSeconds;
   state.minusOneRemainingTime = snap.minusOneRemainingTime;
-  addLog(`↩ 取消：${snap.description}`, 0, state.waitTime);
+  state.lastUpdateTimestamp   = Date.now();
+  addLog(`↩ 取消：${snap.description}`, 0, Math.floor(state.totalSeconds / 60));
   saveState(); renderAll(); renderUndoBtn();
   showUndoToast(`「${snap.description}」を取り消しました`);
 }
@@ -931,7 +939,7 @@ function init() {
   buildPharmButtons();
   buildPrescGrid();
   setupAllButtons();
-  renderAll(59);
+  renderAll();
   setInterval(tick, 1000);
 }
 
@@ -941,6 +949,12 @@ function loadState() {
     if (saved) {
       const parsed = JSON.parse(saved);
       Object.assign(state, parsed);
+      // ★ 後方互換: 旧 waitTime（分）→ totalSeconds（秒）変換
+      if (state.waitTime != null && state.totalSeconds == null) {
+        state.totalSeconds = (state.waitTime || 0) * 60;
+      }
+      delete state.waitTime;
+      if (state.totalSeconds == null) state.totalSeconds = 0;
       if (!state.customTimeTable)   state.customTimeTable   = {};
       if (!state.customAnnotations) state.customAnnotations = {};
       if (!state.actionLog)         state.actionLog         = [];
@@ -963,42 +977,52 @@ function saveState() {
 }
 
 function catchUpTime() {
-  const now  = Date.now();
-  const mins = Math.floor((now - (state.lastUpdateTimestamp || now)) / 60000);
-  if (mins > 0) {
-    state.waitTime              = Math.max(0, state.waitTime - mins);
-    state.minusOneRemainingTime = Math.max(0, state.minusOneRemainingTime - mins);
-    state.lastUpdateTimestamp   = now;
-    saveState();
+  const now     = Date.now();
+  const elapsed = Math.max(0, now - (state.lastUpdateTimestamp || now));
+  const elapsedSecs = Math.floor(elapsed / 1000);
+  const elapsedMins = Math.floor(elapsed / 60000);
+  if (elapsedSecs > 0) {
+    state.totalSeconds          = Math.max(0, state.totalSeconds - elapsedSecs);
+    state.minusOneRemainingTime = Math.max(0, state.minusOneRemainingTime - elapsedMins);
   }
+  state.lastUpdateTimestamp = now;
+  // tickCount をリロード後の位置に合わせる
+  tickCount = elapsedSecs % 60;
+  saveState();
 }
 
 // ============================================================
-//  TIMER
+//  TIMER（秒ベース）
 // ============================================================
 function tick() {
-  const now         = Date.now();
-  const elapsed     = now - state.lastUpdateTimestamp;
-  const mins        = Math.floor(elapsed / 60000);
-  const secsElapsed = Math.floor((elapsed % 60000) / 1000);
-  const secsDisplay = 59 - secsElapsed;
-
-  if (mins > 0) {
-    state.waitTime              = Math.max(0, state.waitTime - mins);
-    state.minusOneRemainingTime = Math.max(0, state.minusOneRemainingTime - mins);
-    state.lastUpdateTimestamp  += mins * 60000;
-    saveState();
+  // ① 待ち時間を1秒減算
+  if (state.totalSeconds > 0) {
+    state.totalSeconds--;
   }
 
-  if (secsDisplay === 0 && state.waitTime > 0 && state.soundEnabled) {
+  // ② minusOneRemainingTime を60秒ごとに1分減算
+  tickCount = (tickCount + 1) % 60;
+  if (tickCount === 0 && state.minusOneRemainingTime > 0) {
+    state.minusOneRemainingTime--;
+  }
+
+  // ③ 音チェック（分の境界タイミング）
+  const mins = Math.floor(state.totalSeconds / 60);
+  if (state.totalSeconds % 60 === 0 && state.totalSeconds > 0 && state.soundEnabled) {
     const thr = state.soundThreshold || 15;
-    if (state.waitTime >= thr && state.waitTime % 5 === 0 && state.waitTime !== lastSoundMinute) {
-      lastSoundMinute = state.waitTime;
+    if (mins >= thr && mins % 5 === 0 && mins !== lastSoundMinute) {
+      lastSoundMinute = mins;
       playSoundB();
     }
   }
 
-  renderAll(secsDisplay);
+  // ④ 定期保存（60秒ごと or 0になった時）
+  if (tickCount === 0 || state.totalSeconds === 0) {
+    state.lastUpdateTimestamp = Date.now();
+    saveState();
+  }
+
+  renderAll();
 }
 
 // ============================================================
@@ -1067,38 +1091,35 @@ function getEffective() {
 // ============================================================
 //  RENDER
 // ============================================================
-function renderAll(secs) {
-  renderWaitCard(secs);
+function renderAll() {
+  renderWaitCard();
   renderPharmButtons();
   renderPrescGrid();
   renderFreeAdd();
   renderSubPanelTimes();
 }
 
-function renderWaitCard(secs) {
-  const wt  = state.waitTime;
-  const c   = wt >= 40 ? COLOR_DANGER : wt >= 30 ? COLOR_WARNING : COLOR_NORMAL;
-  const eff = getEffective();
+function renderWaitCard() {
+  const ts   = state.totalSeconds;
+  const mins = Math.floor(ts / 60);
+  const secs = ts % 60;
+  const c    = mins >= 40 ? COLOR_DANGER : mins >= 30 ? COLOR_WARNING : COLOR_NORMAL;
+  const eff  = getEffective();
 
-  document.getElementById('waitTimeNum').textContent           = wt;
+  // ★ 分と秒を分けて表示
+  document.getElementById('waitTimeNum').textContent           = mins;
+  document.getElementById('waitSecsNum').textContent           = String(secs).padStart(2, '0');
   document.getElementById('effectiveCountDisplay').textContent = eff;
   document.getElementById('statusBadge').textContent           = c.badge;
   document.documentElement.style.setProperty('--dyn-color', c.color);
   document.documentElement.style.setProperty('--dyn-bg',    c.bg);
 
-  const secsStr = (secs != null) ? String(secs).padStart(2,'0') : '00';
-  document.getElementById('waitSecsNum').textContent = secsStr;
-
-  // V3: opacity で表示/非表示（レイアウト維持のため）
   const minusBtn = document.getElementById('minusInfoDisplay');
   if (state.minusOneRemainingTime > 0 && state.mode === 'auto') {
     minusBtn.textContent = `-1：残り${state.minusOneRemainingTime}分`;
     minusBtn.classList.add('visible');
   } else {
-    // テキストを保持してサイズを維持（なければプレースホルダー）
-    if (!minusBtn.textContent || minusBtn.textContent === '-1：残り0分') {
-      minusBtn.textContent = '-1：残り0分';
-    }
+    if (!minusBtn.textContent) minusBtn.textContent = '-1：残り0分';
     minusBtn.classList.remove('visible');
   }
 
@@ -1211,10 +1232,11 @@ function setupFreeBtnEvents(btn, value, idx) {
 function addPrescTime(pharmCount, type, btn) {
   const mins = getTimeValue(pharmCount, type);
   pushUndo(getAnnotationText(pharmCount, type) + ` +${mins}分`);
-  const prev = state.waitTime;
-  state.waitTime += mins;
-  checkSoundBoundary(prev, state.waitTime);
-  addLog(`${getAnnotationText(pharmCount, type)} +${mins}分`, mins, state.waitTime);
+  const prevMins = Math.floor(state.totalSeconds / 60);
+  state.totalSeconds += mins * 60;
+  state.lastUpdateTimestamp = Date.now();
+  checkSoundBoundary(prevMins, Math.floor(state.totalSeconds / 60));
+  addLog(`${getAnnotationText(pharmCount, type)} +${mins}分`, mins, Math.floor(state.totalSeconds / 60));
   saveState(); renderAll();
   if (btn) bounce(btn);
   if (prescExpanded) toggleLargeColumn(true);
@@ -1222,59 +1244,64 @@ function addPrescTime(pharmCount, type, btn) {
 
 function addOintment(hasPremade) {
   pushUndo(hasPremade ? `軟膏（予製あり）` : `軟膏（予製なし）`);
-  const prev = state.waitTime;
+  const prevMins = Math.floor(state.totalSeconds / 60);
   if (hasPremade) {
     const w = state.ointPremadeWait;
-    state.waitTime += w;
-    checkSoundBoundary(prev, state.waitTime);
-    addLog(`軟膏（予製あり）+${w}分`, w, state.waitTime);
+    state.totalSeconds += w * 60;
+    checkSoundBoundary(prevMins, Math.floor(state.totalSeconds / 60));
+    addLog(`軟膏（予製あり）+${w}分`, w, Math.floor(state.totalSeconds / 60));
   } else {
     const w = state.ointNoPremadeWait, m = state.ointNoPremadeMinus;
-    state.waitTime += w; state.minusOneRemainingTime += m;
-    checkSoundBoundary(prev, state.waitTime);
-    addLog(`軟膏（予製なし）+${w}分/-1×${m}分`, w, state.waitTime);
+    state.totalSeconds += w * 60; state.minusOneRemainingTime += m;
+    checkSoundBoundary(prevMins, Math.floor(state.totalSeconds / 60));
+    addLog(`軟膏（予製なし）+${w}分/-1×${m}分`, w, Math.floor(state.totalSeconds / 60));
   }
+  state.lastUpdateTimestamp = Date.now();
   saveState(); renderAll();
 }
 
 function addPowder(hasDimelo) {
   pushUndo(hasDimelo ? `粉（ディメロあり）` : `粉（ディメロなし）`);
-  const prev = state.waitTime;
+  const prevMins = Math.floor(state.totalSeconds / 60);
   if (hasDimelo) {
     const w = state.powderDimeloWait;
-    state.waitTime += w;
-    checkSoundBoundary(prev, state.waitTime);
-    addLog(`粉（ディメロあり）+${w}分`, w, state.waitTime);
+    state.totalSeconds += w * 60;
+    checkSoundBoundary(prevMins, Math.floor(state.totalSeconds / 60));
+    addLog(`粉（ディメロあり）+${w}分`, w, Math.floor(state.totalSeconds / 60));
   } else {
     const w = state.powderNoDimeloWait, m = state.powderNoDimeloMinus;
-    state.waitTime += w; state.minusOneRemainingTime += m;
-    checkSoundBoundary(prev, state.waitTime);
-    addLog(`粉（ディメロなし）+${w}分/-1×${m}分`, w, state.waitTime);
+    state.totalSeconds += w * 60; state.minusOneRemainingTime += m;
+    checkSoundBoundary(prevMins, Math.floor(state.totalSeconds / 60));
+    addLog(`粉（ディメロなし）+${w}分/-1×${m}分`, w, Math.floor(state.totalSeconds / 60));
   }
+  state.lastUpdateTimestamp = Date.now();
   saveState(); renderAll();
 }
 
 function addFreeTime(minutes) {
   pushUndo(`自由加算 +${minutes}分`);
-  const prev = state.waitTime;
-  state.waitTime += minutes;
-  checkSoundBoundary(prev, state.waitTime);
-  addLog(`自由加算 +${minutes}分`, minutes, state.waitTime);
+  const prevMins = Math.floor(state.totalSeconds / 60);
+  state.totalSeconds += minutes * 60;
+  state.lastUpdateTimestamp = Date.now();
+  checkSoundBoundary(prevMins, Math.floor(state.totalSeconds / 60));
+  addLog(`自由加算 +${minutes}分`, minutes, Math.floor(state.totalSeconds / 60));
   saveState(); renderAll();
 }
 
 function subtractTime() {
   pushUndo(`－${state.subtractMinutes}分`);
-  const prev = state.waitTime;
-  state.waitTime = Math.max(0, state.waitTime - state.subtractMinutes);
-  checkSoundBoundary(prev, state.waitTime);
-  addLog(`${state.subtractMinutes}分戻す`, -(prev - state.waitTime), state.waitTime);
+  const prevMins = Math.floor(state.totalSeconds / 60);
+  state.totalSeconds = Math.max(0, state.totalSeconds - state.subtractMinutes * 60);
+  state.lastUpdateTimestamp = Date.now();
+  const newMins = Math.floor(state.totalSeconds / 60);
+  checkSoundBoundary(prevMins, newMins);
+  addLog(`${state.subtractMinutes}分戻す`, -(prevMins - newMins), newMins);
   saveState(); renderAll();
 }
 
 function setBase(n) {
   state.basePharmacistCount = n;
-  addLog(`薬剤師人数を${n}人に変更`, 0, state.waitTime);
+  addLog(`薬剤師人数を${n}人に変更`, 0, Math.floor(state.totalSeconds / 60));
   saveState(); renderAll();
 }
 function setMode(m) { state.mode = m; saveState(); renderAll(); }
@@ -1282,16 +1309,18 @@ function setMode(m) { state.mode = m; saveState(); renderAll(); }
 // ============================================================
 //  SOUND
 // ============================================================
-function getAudio() {
+async function getAudio() {
   if (!audioCtx) {
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
   }
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
+  if (audioCtx.state === 'suspended') {
+    try { await audioCtx.resume(); } catch(e) {}
+  }
+  return audioCtx.state === 'running' ? audioCtx : null;
 }
-function playSoundA() {
+async function playSoundA() {
   try {
-    const ctx = getAudio(); if (!ctx) return;
+    const ctx = await getAudio(); if (!ctx) return;
     const osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     osc.type = 'sine';
@@ -1302,9 +1331,9 @@ function playSoundA() {
     osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
   } catch(e) {}
 }
-function playSoundB() {
+async function playSoundB() {
   try {
-    const ctx = getAudio(); if (!ctx) return;
+    const ctx = await getAudio(); if (!ctx) return;
     const t = ctx.currentTime, dur = 0.6;
     [[880,0.30,0.60],[1760,0.18,0.50],[3520,0.09,0.40]].forEach(([freq,vol,dec]) => {
       const osc = ctx.createOscillator(), gain = ctx.createGain();
@@ -1319,12 +1348,13 @@ function playSoundB() {
     });
   } catch(e) {}
 }
-function checkSoundBoundary(prev, next) {
+// prev/next は分（整数）で渡す
+function checkSoundBoundary(prevMins, nextMins) {
   if (!state.soundEnabled) return;
   const thr = state.soundThreshold || 15;
-  if (prev < thr && next < thr) return;
-  if (Math.floor(prev/5) === Math.floor(next/5)) return;
-  next > prev ? playSoundA() : playSoundB();
+  if (prevMins < thr && nextMins < thr) return;
+  if (Math.floor(prevMins/5) === Math.floor(nextMins/5)) return;
+  nextMins > prevMins ? playSoundA() : playSoundB();
 }
 
 // ============================================================
@@ -1453,18 +1483,19 @@ function setupOverlayBgClose(id) {
 
 function openManualInput() {
   const f = document.getElementById('manualInputField');
-  f.value = state.waitTime || '';
+  f.value = Math.floor(state.totalSeconds / 60) || '';
   openOverlay('manualInputOverlay');
   setTimeout(() => { f.focus(); f.select(); }, 100);
 }
 function confirmManualInput() {
   const val = parseInt(document.getElementById('manualInputField').value);
   if (!isNaN(val) && val >= 0) {
-    pushUndo(`手入力（${state.waitTime}分→${val}分）`);
-    const prev = state.waitTime;
-    state.waitTime = val;
-    checkSoundBoundary(prev, val);
-    addLog(`手入力 → ${val}分`, val - prev, val);
+    const prevMins = Math.floor(state.totalSeconds / 60);
+    pushUndo(`手入力（${prevMins}分→${val}分）`);
+    state.totalSeconds = val * 60;
+    state.lastUpdateTimestamp = Date.now();
+    checkSoundBoundary(prevMins, val);
+    addLog(`手入力 → ${val}分`, val - prevMins, val);
     saveState(); renderAll();
   }
   closeOverlay('manualInputOverlay');
@@ -1479,7 +1510,7 @@ function confirmMinusOneEdit() {
   const val = parseInt(document.getElementById('minusOneField').value);
   if (!isNaN(val) && val >= 0) {
     state.minusOneRemainingTime = val;
-    addLog(`-1残り時間を${val}分に設定`, 0, state.waitTime);
+    addLog(`-1残り時間を${val}分に設定`, 0, Math.floor(state.totalSeconds / 60));
     saveState(); renderAll();
   }
   closeOverlay('minusOneOverlay');
@@ -1493,7 +1524,7 @@ function confirmIppoWith(val) {
   if (!isNaN(val) && val > 0) {
     pushUndo(`一包化 -1×${val}分`);
     state.minusOneRemainingTime += val;
-    addLog(`一包化（すぐ受け取り）-1×${val}分`, 0, state.waitTime);
+    addLog(`一包化（すぐ受け取り）-1×${val}分`, 0, Math.floor(state.totalSeconds / 60));
     saveState(); renderAll();
   }
   closeOverlay('ippoOverlay');
@@ -1565,7 +1596,7 @@ function saveSettings() {
 function doReset() {
   localStorage.removeItem('pharmacyWait_v4');
   state = {
-    waitTime:0, basePharmacistCount:3, minusOneRemainingTime:0,
+    totalSeconds:0, basePharmacistCount:3, minusOneRemainingTime:0,
     lastUpdateTimestamp:Date.now(), mode:'auto', soundEnabled:true,
     subtractMinutes:5, soundThreshold:15, maxPharmacistCount:3,
     ointPremadeWait:2, ointNoPremadeWait:5, ointNoPremadeMinus:5,
@@ -1573,6 +1604,8 @@ function doReset() {
     freeAddValues:[1,2,5,10,15,20,30],
     customTimeTable:{}, customAnnotations:{}, memos:[], actionLog:[]
   };
+  tickCount = 0;
+  lastSoundMinute = -1;
   saveState(); buildPharmButtons(); buildPrescGrid(); renderAll();
   closeOverlay('confirmResetOverlay'); closeOverlay('settingsOverlay');
 }
@@ -1769,12 +1802,13 @@ function setupAllButtons() {
     }
   });
 
+  // { once: true } を外す：AudioContextが再サスペンドされた時も毎回再開できるように
   const unlock = () => {
     if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   };
-  document.addEventListener('touchstart', unlock, { passive: true, once: true });
-  document.addEventListener('click',      unlock, { once: true });
+  document.addEventListener('touchstart', unlock, { passive: true });
+  document.addEventListener('click',      unlock);
 }
 
 // ============================================================
